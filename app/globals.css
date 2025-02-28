@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* 添加到全局样式文件，例如 globals.css */
+::-webkit-scrollbar {
+  width: 8px; /* 设置滚动条宽度 */
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1; /* 滚动条轨道 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888; /* 滚动条滑块 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555; /* 滚动条滑块悬停效果 */
+}
+
+:where(.css-dev-only-do-not-override-19lec04).ant-tabs .ant-tabs-content-holder {
+  overflow-y: auto;
+}
+
+/* 平滑过渡效果 */
+.box-transition {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+/* 操作按钮悬停效果 */
+.btn-confirm:hover {
+  transform: scale(1.05);
+}
+.btn-cancel:hover {
+  transform: scale(1.05);
+}
