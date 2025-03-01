@@ -101,7 +101,7 @@ export default function Login() {
         </form>
         <p className="text-center text-gray-600 mt-4">
           没有账号？{" "}
-          <Link href="/register" className="text-blue-500 hover:underline">
+          <Link href="/auth/register" className="text-blue-500 hover:underline">
             去注册
           </Link>
         </p>
