@@ -6,8 +6,10 @@ import { UserOutlined, LockOutlined, ProjectOutlined, AppstoreOutlined, MailOutl
 import axios from "@/utils/axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useAuth } from "@/components/AuthContext";
 
 const Profile = () => {
+  const { user, logout, refreshUserState } = useAuth(); // 使用 Auth Context
   const [userInfo, setUserInfo] = useState({ name: "", email: "" });
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] = useState(false);
@@ -58,33 +60,15 @@ const Profile = () => {
   };
 
   useEffect(() => {
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+    
     fetchUserData();
-    // 添加 storage 事件监听器，检测 localStorage 变化
-    const handleStorageChange = (event) => {
-      if (event.key === "token" && !event.newValue) {
-        // token 被移除，跳转到登录页
-        toast.info("登录状态已失效，请重新登录");
-        router.push("/auth/login");
-      }
-    };
-
-    // 监听 storage 事件
-    window.addEventListener("storage", handleStorageChange);
-
-    // 检查 token 是否存在，每秒轮询一次
-    const checkTokenInterval = setInterval(() => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.info("登录状态已失效，请重新登录");
-        router.push("/auth/login");
-      }
-    }, 1000);
-    // 清理事件监听器和定时器
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      clearInterval(checkTokenInterval);
-    };
-  }, []);
+    
+    // 不再需要手动监听localStorage变化，因为AuthContext已经处理了
+  }, [user]);
 
   // 验证个人信息表单
   const validateProfileForm = () => {
@@ -121,13 +105,9 @@ const Profile = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    logout(); // 使用 Auth Context 的 logout 方法
     setIsLogoutModalVisible(false);
     toast.success("已退出登录，即将跳转到登录页面...");
-    setTimeout(() => {
-      router.push("/auth/login");
-    }, 1000);
   };
 
   const handleEditInfo = async () => {
@@ -135,14 +115,20 @@ const Profile = () => {
 
     try {
       await axios.put("/api/user/profile", { name: newName, email: newEmail });
-      setUserInfo({ name: newName, email: newEmail });
+      
+      // 更新本地存储的用户信息
       const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
       const updatedUser = { ...storedUser, name: newName, email: newEmail };
       localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      // 触发 Auth Context 刷新
+      refreshUserState();
+      
+      setUserInfo({ name: newName, email: newEmail });
       setIsEditModalVisible(false);
       toast.success("个人信息已更新");
     } catch (error) {
-      toast.error(error || "更新个人信息失败，请重试");
+      toast.error(error?.response?.data?.message || "更新个人信息失败，请重试");
     }
   };
 
@@ -166,13 +152,13 @@ const Profile = () => {
         pauseOnHover: true,
         draggable: true,
       });
+      
+      // 使用 Auth Context 的 logout 方法
       setTimeout(() => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        router.push("/auth/login");
+        logout();
       }, 2000);
     } catch (error) {
-      toast.error(error || "更新密码失败，请重试");
+      toast.error(error?.response?.data?.message || "更新密码失败，请重试");
     }
   };
 

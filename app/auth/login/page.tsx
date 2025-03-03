@@ -7,13 +7,16 @@ import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Import styles for toast notifications
 import axios from "axios";
+import { useAuth } from "@/components/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth(); // 使用 Auth Context 的 login 方法
 
   const validateForm = () => {
     if (!email || !password) {
@@ -28,22 +31,35 @@ export default function Login() {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    setIsLoading(true);
     try {
       const response = await axios.post("/api/auth/login", { email, password });
       const { token, user } = response.data;
+      
+      // 保存到 localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
+      
+      // 使用 AuthContext 的 login 方法
+      login(user);
+      
+      // 触发自定义事件通知其他组件（可选，如果 AuthContext 已经处理了跨页面通信）
+      window.dispatchEvent(new Event('auth-change'));
+      
       toast.success("登录成功");
       setTimeout(() => {
         router.push("/"); 
       }, 1000);
     } catch (err) {
-      setError(err.response.data.message || "登录失败");
+      const errorMessage = err.response?.data?.message || "登录失败";
+      setError(errorMessage);
       toast.error("登录失败，请检查您的信息");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -66,6 +82,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -82,11 +99,13 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                disabled={isLoading}
               >
                 {!showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
@@ -94,9 +113,12 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300"
+            className={`w-full ${
+              isLoading ? "bg-blue-300" : "bg-blue-500 hover:bg-blue-600"
+            } text-white py-2 px-4 rounded-lg transition duration-300`}
+            disabled={isLoading}
           >
-            登录
+            {isLoading ? "登录中..." : "登录"}
           </button>
         </form>
         <p className="text-center text-gray-600 mt-4">
