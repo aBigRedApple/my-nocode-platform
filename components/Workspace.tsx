@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import Box, { BoxData, ComponentInfo } from "./Box";
+import Box, { BoxData } from "./Box";
 import { FaUndo, FaRedo } from "react-icons/fa";
 
 export default function Workspace({
@@ -25,6 +25,7 @@ export default function Workspace({
   const saveHistory = (newBoxes: BoxData[]) => {
     const newHistory = history.slice(0, currentIndex + 1);
     newHistory.push(newBoxes);
+    if (newHistory.length > 10) newHistory.shift();
     setHistory(newHistory);
     setCurrentIndex(newHistory.length - 1);
   };
@@ -32,8 +33,7 @@ export default function Workspace({
   const handleUndo = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentIndex > 0) {
-      const previousBoxes = history[currentIndex - 1];
-      setBoxes(previousBoxes);
+      setBoxes(history[currentIndex - 1]);
       setCurrentIndex(currentIndex - 1);
     }
   };
@@ -41,8 +41,7 @@ export default function Workspace({
   const handleRedo = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentIndex < history.length - 1) {
-      const nextBoxes = history[currentIndex + 1];
-      setBoxes(nextBoxes);
+      setBoxes(history[currentIndex + 1]);
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -50,9 +49,9 @@ export default function Workspace({
   const getButtonOffset = () => {
     if (buttonBarRef.current) {
       const buttonRect = buttonBarRef.current.getBoundingClientRect();
-      return buttonRect.height + 8; // 按钮高度 + top-2 的 8px
+      return buttonRect.height + 8;
     }
-    return 32; // 默认值
+    return 32;
   };
 
   const handleWorkspaceClick = (e: React.MouseEvent) => {
@@ -60,11 +59,12 @@ export default function Workspace({
 
     const rect = workspaceRef.current.getBoundingClientRect();
     const buttonOffset = getButtonOffset();
-    let x = e.clientX - rect.left;
+    const paddingOffset = 32;
+    let x = e.clientX - rect.left - paddingOffset;
     let y = e.clientY - rect.top - buttonOffset;
 
     const boxWidth = 300;
-    const workspaceWidth = rect.width;
+    const workspaceWidth = rect.width - 2 * paddingOffset;
 
     if (x + boxWidth > workspaceWidth) return;
 
@@ -94,6 +94,7 @@ export default function Workspace({
     onSelectBox?.(null);
     onSelectComponent?.(0, null);
 
+    x = Math.max(x, 0);
     y = Math.max(y, 0);
 
     const newBox: BoxData = {
@@ -108,6 +109,18 @@ export default function Workspace({
     const newBoxes = [...boxes, newBox];
     setBoxes(newBoxes);
     setNextId(nextId + 1);
+    saveHistory(newBoxes);
+  };
+
+  const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData> | null) => {
+    let newBoxes;
+    if (updatedBox === null) {
+      newBoxes = boxes.filter((b) => b.id !== boxId); // 删除盒子
+      onSelectBox?.(null); // 清空选中状态
+    } else {
+      newBoxes = boxes.map((b) => (b.id === boxId ? { ...b, ...updatedBox } : b));
+    }
+    setBoxes(newBoxes);
     saveHistory(newBoxes);
   };
 
@@ -149,7 +162,7 @@ export default function Workspace({
           key={box.id}
           style={{
             position: "absolute",
-            left: box.position.x,
+            left: box.position.x + 32,
             top: box.position.y + getButtonOffset(),
           }}
         >
@@ -160,12 +173,12 @@ export default function Workspace({
               if (!boxToConfirm) return;
               const allComponents = [...boxToConfirm.confirmedComponents, ...boxToConfirm.pendingComponents];
               const totalComponentHeight = allComponents.reduce(
-                (sum, comp) => sum + calculateComponentHeight(comp),
+                (sum, comp) => sum + comp.height,
                 0
               );
-              const marginsHeight = allComponents.length > 1 ? (allComponents.length - 1) * 8 : 0;
+              const marginsHeight = allComponents.length > 1 ? (allComponents.length - 1) * 16 : 0;
               const padding = 32;
-              const newHeight = totalComponentHeight + marginsHeight + padding;
+              const newHeight = Math.max(totalComponentHeight + marginsHeight + padding, 350);
               const newBoxes = boxes.map((b) =>
                 b.id === id
                   ? {
@@ -181,33 +194,40 @@ export default function Workspace({
               saveHistory(newBoxes);
             }}
             onCancel={(id) => {
-              const newBoxes = boxes.filter((b) => b.id !== id);
+              const boxToCancel = boxes.find((b) => b.id === id);
+              if (!boxToCancel) return;
+              const newBoxes = boxes.map((b) =>
+                b.id === id
+                  ? {
+                      ...b,
+                      pendingComponents: [],
+                      isConfirmed: true,
+                    }
+                  : b
+              );
               setBoxes(newBoxes);
-              onSelectBox?.(null);
               saveHistory(newBoxes);
             }}
             onClick={(id) => {
               onSelectBox?.(id);
-              setBoxes(boxes.map((b) => (b.id === id ? { ...b, isConfirmed: false } : b)));
+              const newBoxes = boxes.map((b) =>
+                b.id === id ? { ...b, isConfirmed: false } : b
+              );
+              setBoxes(newBoxes);
+              saveHistory(newBoxes);
             }}
             onAddComponent={(boxId, component) => {
               const newBoxes = boxes.map((b) =>
                 b.id === boxId ? { ...b, pendingComponents: [...b.pendingComponents, component] } : b
               );
               setBoxes(newBoxes);
+              saveHistory(newBoxes);
             }}
             onSelectComponent={onSelectComponent}
+            onUpdateBox={handleUpdateBox}
           />
         </div>
       ))}
     </div>
   );
 }
-
-const calculateComponentHeight = (comp: ComponentInfo) => {
-  if (comp.type === "table") {
-    const rows = comp.props?.rows || 2;
-    return rows * 20; // 动态调整表格高度
-  }
-  return comp.height;
-};

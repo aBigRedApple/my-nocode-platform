@@ -1,10 +1,11 @@
 "use client";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { useDrop } from "react-dnd";
 import { ComponentPreviewWithProps } from "./ComponentLibrary";
 
 export interface ComponentInfo {
   type: string;
+  width: number;
   height: number;
   props?: Record<string, any>;
 }
@@ -18,7 +19,7 @@ export interface BoxData {
   isConfirmed: boolean;
 }
 
-const COMPONENT_DEFAULT_HEIGHTS: Record<string, number> = {
+export const COMPONENT_DEFAULT_HEIGHTS: Record<string, number> = {
   button: 40,
   text: 40,
   radio: 40,
@@ -26,11 +27,11 @@ const COMPONENT_DEFAULT_HEIGHTS: Record<string, number> = {
   image: 40,
   date: 40,
   dateRange: 40,
-  table: 40,
+  table: 60,
   default: 60,
 };
 
-const COMPONENT_MARGIN = 8;
+export const COMPONENT_MARGIN = 16;
 
 export default function Box({
   box,
@@ -39,6 +40,7 @@ export default function Box({
   onClick,
   onAddComponent,
   onSelectComponent,
+  onUpdateBox,
 }: {
   box: BoxData;
   onConfirm: (id: number) => void;
@@ -46,84 +48,75 @@ export default function Box({
   onClick: (id: number) => void;
   onAddComponent: (boxId: number, component: ComponentInfo) => void;
   onSelectComponent?: (boxId: number, componentIndex: number) => void;
+  onUpdateBox: (boxId: number, updatedBox: Partial<BoxData>) => void;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const [totalComponentHeight, setTotalComponentHeight] = useState(0);
 
   const allComponents = useMemo(() => {
     return [...box.confirmedComponents, ...box.pendingComponents];
   }, [box.confirmedComponents, box.pendingComponents]);
 
-  const calculateComponentHeight = (comp: ComponentInfo) => {
-    if (comp.type === "table") {
-      const rows = comp.props?.rows || 2;
-      return rows * 20;
-    }
-    return COMPONENT_DEFAULT_HEIGHTS[comp.type] || COMPONENT_DEFAULT_HEIGHTS.default;
-  };
-
   useEffect(() => {
-    const componentsHeight = allComponents.reduce((sum, comp) => sum + calculateComponentHeight(comp), 0);
+    // 计算所有组件的总高度和最大宽度
+    const componentsHeight = allComponents.reduce((sum, comp) => sum + comp.height, 0);
     const marginsHeight = allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0;
     const padding = 32;
-    const newTotalHeight = componentsHeight + marginsHeight + padding;
-    setTotalComponentHeight(Math.max(newTotalHeight, 500)); // 确保初始高度不低于 500px
-  }, [allComponents]);
+    const newHeight = Math.max(componentsHeight + marginsHeight + padding, 350); // 最小高度 350px
 
-  const [{ isOver }, drop] = useDrop(
-    () => ({
-      accept: "component",
-      drop: (item: { type: string }) => {
-        const baseHeight = COMPONENT_DEFAULT_HEIGHTS[item.type] || COMPONENT_DEFAULT_HEIGHTS.default;
-        const componentHeight = item.type === "table" ? 40 : baseHeight;
-        const extraSpaceNeeded = componentHeight + (allComponents.length > 0 ? COMPONENT_MARGIN : 0);
+    const maxComponentWidth = allComponents.reduce((max, comp) => Math.max(max, comp.width), 135); // 最小宽度 135
+    const newWidth = Math.max(maxComponentWidth + 32, box.size.width); // 加 padding
 
-        if (totalComponentHeight + extraSpaceNeeded <= box.size.height || !box.isConfirmed) {
-          onAddComponent(box.id, { type: item.type, height: componentHeight, props: {} });
-        } else {
-          console.log("空间不足");
-        }
-      },
-      collect: (monitor) => ({
-        isOver: !!monitor.isOver(),
-      }),
+    // 如果高度或宽度需要更新，则调用 onUpdateBox
+    if (newHeight !== box.size.height || newWidth !== box.size.width) {
+      onUpdateBox(box.id, { size: { width: newWidth, height: newHeight } });
+    }
+  }, [allComponents, box.id, box.size.width, box.size.height, onUpdateBox]);
+
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: "component",
+    drop: (item: { type: string }) => {
+      const baseHeight = COMPONENT_DEFAULT_HEIGHTS[item.type] || COMPONENT_DEFAULT_HEIGHTS.default;
+      const componentHeight = baseHeight;
+      const extraSpaceNeeded = componentHeight + (allComponents.length > 0 ? COMPONENT_MARGIN : 0);
+
+      const currentHeight = allComponents.reduce((sum, comp) => sum + comp.height, 0) +
+        (allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0) + 32;
+
+      if (currentHeight + extraSpaceNeeded <= box.size.height) {
+        onAddComponent(box.id, { type: item.type, width: 100, height: componentHeight, props: {} });
+      } else {
+        console.log("空间不足，无法添加组件");
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
     }),
-    [totalComponentHeight, allComponents, box.id, box.size.height, box.isConfirmed, onAddComponent]
-  );
+  }), [allComponents, box.size.height, onAddComponent]);
 
-  if (box.isConfirmed) {
-    return (
-      <div
-        className="absolute border-transparent"
-        style={{
-          width: box.size.width,
-          height: totalComponentHeight,
-          padding: "16px",
-          cursor: "pointer",
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick(box.id);
-        }}
-      >
-        {box.confirmedComponents.map((comp: ComponentInfo, index: number) => (
-          <div
-            key={index}
-            style={{
-              height: calculateComponentHeight(comp),
-              marginBottom: index < box.confirmedComponents.length - 1 ? COMPONENT_MARGIN : 0,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectComponent?.(box.id, index);
-            }}
-          >
-            <ComponentPreviewWithProps type={comp.type} props={comp.props} />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const renderComponents = (components: ComponentInfo[]) => {
+    let currentTop = 16;
+    return components.map((comp: ComponentInfo, index: number) => {
+      const componentElement = (
+        <div
+          key={index}
+          style={{
+            position: "absolute",
+            top: currentTop,
+            width: comp.width,
+            height: comp.height,
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectComponent?.(box.id, index);
+          }}
+        >
+          <ComponentPreviewWithProps type={comp.type} props={comp.props} width={comp.width} height={comp.height} />
+        </div>
+      );
+      currentTop += comp.height + (index < components.length - 1 ? COMPONENT_MARGIN : 0);
+      return componentElement;
+    });
+  };
 
   return (
     <div
@@ -131,53 +124,46 @@ export default function Box({
         drop(node);
         boxRef.current = node;
       }}
-      className={`absolute border-2 border-blue-500 rounded-lg shadow-md p-4 ${isOver ? "bg-blue-50" : "bg-white"}`}
+      className={`absolute ${box.isConfirmed ? "" : "border-2 border-blue-500"} p-4 ${isOver ? "bg-blue-50" : "bg-white"}`}
       style={{
         width: box.size.width,
-        height: totalComponentHeight,
+        height: box.size.height, // 使用动态调整的高度
+        position: "relative",
+        cursor: box.isConfirmed ? "pointer" : "default",
       }}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(box.id);
+      }}
     >
       {allComponents.length > 0 ? (
-        allComponents.map((comp: ComponentInfo, index: number) => (
-          <div
-            key={index}
-            style={{
-              height: calculateComponentHeight(comp),
-              marginBottom: index < allComponents.length - 1 ? COMPONENT_MARGIN : 0,
-            }}
+        renderComponents(allComponents)
+      ) : !box.isConfirmed ? (
+        <div className="flex items-center justify-center h-full text-gray-400">拖放组件到这里</div>
+      ) : null}
+
+      {!box.isConfirmed && (
+        <div className="absolute bottom-2 right-2 flex space-x-2">
+          <button
             onClick={(e) => {
               e.stopPropagation();
-              onSelectComponent?.(box.id, index);
+              onConfirm(box.id);
             }}
+            className="px-2 py-1 bg-green-500 text-white rounded text-sm"
           >
-            <ComponentPreviewWithProps type={comp.type} props={comp.props} />
-          </div>
-        ))
-      ) : (
-        <div className="flex items-center justify-center h-full text-gray-400">拖放组件到这里</div>
+            确定
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel(box.id);
+            }}
+            className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            取消
+          </button>
+        </div>
       )}
-
-      <div className="absolute bottom-2 right-2 flex space-x-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onConfirm(box.id);
-          }}
-          className="px-2 py-1 bg-green-500 text-white rounded text-sm"
-        >
-          确定
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onCancel(box.id);
-          }}
-          className="px-2 py-1 bg-red-500 text-white rounded text-sm"
-        >
-          取消
-        </button>
-      </div>
     </div>
   );
 }

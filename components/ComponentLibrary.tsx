@@ -18,102 +18,23 @@ const components: ComponentItem[] = [
   { type: "table", label: "表格" },
 ];
 
-export function ComponentPreview({ type }: { type: string }) {
-  const componentWidth = 100;
-  const componentHeight = 40;
-
+export function ComponentPreviewWithProps({
+  type,
+  props = {},
+  width,
+  height,
+}: {
+  type: string;
+  props?: Record<string, any>;
+  width: number;
+  height: number;
+}) {
   switch (type) {
     case "button":
       return (
         <button
           className="bg-blue-500 text-white px-3 py-1 rounded"
-          style={{ width: componentWidth, height: componentHeight }}
-        >
-          按钮
-        </button>
-      );
-    case "text":
-      return (
-        <input
-          type="text"
-          placeholder="文本"
-          className="border p-1 rounded w-full text-sm"
-          style={{ width: componentWidth, height: componentHeight }}
-        />
-      );
-    case "radio":
-      return (
-        <div className="flex items-center" style={{ width: componentWidth, height: componentHeight }}>
-          <input type="radio" id="radio" name="radio" className="mr-1" />
-          <label htmlFor="radio" className="text-sm">
-            单选
-          </label>
-        </div>
-      );
-    case "checkbox":
-      return (
-        <div className="flex items-center" style={{ width: componentWidth, height: componentHeight }}>
-          <input type="checkbox" id="checkbox" className="mr-1" />
-          <label htmlFor="checkbox" className="text-sm">
-            多选
-          </label>
-        </div>
-      );
-    case "image":
-      return (
-        <div
-          className="w-16 h-16 bg-gray-200 flex items-center justify-center text-sm"
-          style={{ width: componentWidth, height: componentHeight }}
-        >
-          图片
-        </div>
-      );
-    case "date":
-      return (
-        <input
-          type="date"
-          className="border p-1 rounded text-sm"
-          style={{ width: componentWidth, height: componentHeight }}
-        />
-      );
-    case "dateRange":
-      return (
-        <div className="flex space-x-1" style={{ width: componentWidth, height: componentHeight }}>
-          <input type="date" className="border p-1 rounded w-20 text-sm" />
-          <input type="date" className="border p-1 rounded w-20 text-sm" />
-        </div>
-      );
-    case "table":
-      return (
-        <table className="border-collapse border text-sm" style={{ width: componentWidth, height: componentHeight }}>
-          <thead>
-            <tr>
-              <th className="border p-1">表头1</th>
-              <th className="border p-1">表头2</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="border p-1">数据1</td>
-              <td className="border p-1">数据2</td>
-            </tr>
-          </tbody>
-        </table>
-      );
-    default:
-      return <div>{type}</div>;
-  }
-}
-
-export function ComponentPreviewWithProps({ type, props = {} }: { type: string; props?: Record<string, any> }) {
-  const componentWidth = 100;
-
-  switch (type) {
-    case "button":
-      return (
-        <button
-          className="bg-blue-500 text-white px-3 py-1 rounded"
-          style={{ width: componentWidth, height: 40, backgroundColor: props.bgColor || "#3b82f6" }}
+          style={{ width, height, backgroundColor: props.bgColor || "#3b82f6" }}
         >
           {props.text || "按钮"}
         </button>
@@ -124,12 +45,12 @@ export function ComponentPreviewWithProps({ type, props = {} }: { type: string; 
           type="text"
           placeholder={props.placeholder || "文本"}
           className="border p-1 rounded w-full text-sm"
-          style={{ width: componentWidth, height: 40 }}
+          style={{ width, height }}
         />
       );
     case "radio":
       return (
-        <div className="flex items-center" style={{ width: componentWidth, height: 40 }}>
+        <div className="flex items-center" style={{ width, height }}>
           <input type="radio" id="radio" name="radio" className="mr-1" />
           <label htmlFor="radio" className="text-sm">
             {props.label || "单选"}
@@ -138,7 +59,7 @@ export function ComponentPreviewWithProps({ type, props = {} }: { type: string; 
       );
     case "checkbox":
       return (
-        <div className="flex items-center" style={{ width: componentWidth, height: 40 }}>
+        <div className="flex items-center" style={{ width, height }}>
           <input type="checkbox" id="checkbox" className="mr-1" />
           <label htmlFor="checkbox" className="text-sm">
             {props.label || "多选"}
@@ -148,12 +69,13 @@ export function ComponentPreviewWithProps({ type, props = {} }: { type: string; 
     case "image":
       return (
         <div
-          className="w-16 h-16 bg-gray-200 flex items-center justify-center text-sm"
+          className="flex items-center justify-center text-sm"
           style={{
-            width: componentWidth,
-            height: 40,
+            width,
+            height,
             backgroundImage: props.src ? `url(${props.src})` : "none",
             backgroundSize: "cover",
+            backgroundColor: props.src ? "transparent" : "#e5e7eb",
           }}
         >
           {!props.src && "图片"}
@@ -164,14 +86,14 @@ export function ComponentPreviewWithProps({ type, props = {} }: { type: string; 
         <input
           type="date"
           className="border p-1 rounded text-sm"
-          style={{ width: componentWidth, height: 40 }}
+          style={{ width, height }}
         />
       );
     case "dateRange":
       return (
-        <div className="flex space-x-1" style={{ width: componentWidth, height: 40 }}>
-          <input type="date" className="border p-1 rounded w-20 text-sm" />
-          <input type="date" className="border p-1 rounded w-20 text-sm" />
+        <div className="flex space-x-1" style={{ width, height }}>
+          <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} /> {/* 均分宽度 */}
+          <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} />
         </div>
       );
     case "table":
@@ -179,9 +101,8 @@ export function ComponentPreviewWithProps({ type, props = {} }: { type: string; 
       const rows = props.rows || 2;
       const headers = props.headers || ["表头1", "表头2"];
       const data = props.data || [["数据1", "数据2"], ["数据3", "数据4"]];
-      const height = rows * 20; // 动态高度
       return (
-        <table className="border-collapse border text-sm" style={{ width: componentWidth, height }}>
+        <table className="border-collapse border text-sm" style={{ width, height }}>
           <thead>
             <tr>
               {Array.from({ length: columns }).map((_, colIndex) => (
@@ -205,7 +126,7 @@ export function ComponentPreviewWithProps({ type, props = {} }: { type: string; 
         </table>
       );
     default:
-      return <div>{type}</div>;
+      return <div style={{ width, height }}>{type}</div>;
   }
 }
 
@@ -256,7 +177,7 @@ function DraggableComponent({ type, label }: ComponentItem) {
         isDragging ? "opacity-50" : ""
       }`}
     >
-      <ComponentPreview type={type} />
+      <ComponentPreviewWithProps type={type} width={100} height={40} />
       <p className="text-xs text-gray-500 mt-1.5">{label}</p>
     </div>
   );

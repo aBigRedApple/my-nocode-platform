@@ -12,10 +12,14 @@ export default function WorkspacePage() {
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState<number | null>(null);
 
-  const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData>) => {
-    setBoxes((prev) =>
-      prev.map((box) => (box.id === boxId ? { ...box, ...updatedBox } : box))
-    );
+  const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData> | null) => {
+    setBoxes((prev) => {
+      if (updatedBox === null) {
+        return prev.filter((box) => box.id !== boxId); // 删除盒子
+      }
+      return prev.map((box) => (box.id === boxId ? { ...box, ...updatedBox } : box));
+    });
+    if (updatedBox === null) setSelectedBoxId(null); // 删除后清空选中状态
   };
 
   const handleUpdateComponent = (
@@ -46,7 +50,10 @@ export default function WorkspacePage() {
           boxes={boxes}
           setBoxes={setBoxes}
           onSelectBox={setSelectedBoxId}
-          onSelectComponent={(_, index) => setSelectedComponentIndex(index)}
+          onSelectComponent={(boxId, index) => {
+            setSelectedBoxId(boxId);
+            setSelectedComponentIndex(index);
+          }}
         />
         <PropertiesPanel
           selectedBox={boxes.find((box) => box.id === selectedBoxId) || null}
