@@ -1,6 +1,7 @@
 "use client";
 import { BoxData, ComponentInfo } from "./Box";
 import { COMPONENT_DEFAULT_HEIGHTS } from "./Box";
+import { ChangeEvent, useState } from "react";
 
 interface PropertiesPanelProps {
   selectedBox: BoxData | null;
@@ -15,6 +16,8 @@ export default function PropertiesPanel({
   onUpdateBox,
   onUpdateComponent,
 }: PropertiesPanelProps) {
+  const [uploading, setUploading] = useState(false);
+
   if (!selectedBox) {
     return (
       <div className="w-64 bg-gray-50 border-l border-gray-200 p-4">
@@ -27,31 +30,31 @@ export default function PropertiesPanel({
   const buttonOffset = 32;
   const selectedComponent =
     selectedComponentIndex !== null && selectedComponentIndex >= 0
-      ? [...selectedBox.confirmedComponents, ...selectedBox.pendingComponents][selectedComponentIndex]
+      ? [...selectedBox.confirmedComponents, ...selectedBox.pendingComponents][selectedComponentIndex] || null
       : null;
 
   const calculateMinSize = (box: BoxData) => {
     const allComponents = [...box.confirmedComponents, ...box.pendingComponents];
-    const minWidth = Math.max(...allComponents.map((comp) => comp.width || 135), 135); // 最小宽度 135px
+    const minWidth = Math.max(...allComponents.map((comp) => comp.width || 135), 135);
     const minHeight =
       allComponents.reduce(
         (sum, comp) => sum + (comp.height || COMPONENT_DEFAULT_HEIGHTS[comp.type] || 60) + 16,
         0
       ) -
       16 +
-      32; // padding 32，间距 16
+      32;
     return { minWidth, minHeight };
   };
 
   const calculateTableHeight = (rows: number) => {
-    const rowHeight = 40; // 每行 40px
-    const headerHeight = 40; // 表头 40px
-    return headerHeight + (rows - 1) * rowHeight; // 动态计算
+    const rowHeight = 40;
+    const headerHeight = 40;
+    return headerHeight + (rows - 1) * rowHeight;
   };
 
   const calculateTableWidth = (columns: number) => {
-    const columnWidth = 50; // 每列基准宽度 50px
-    return Math.max(columns * columnWidth, 100); // 最小宽度 100px
+    const columnWidth = 50;
+    return Math.max(columns * columnWidth, 100);
   };
 
   const handlePropChange = (key: string, value: any) => {
@@ -62,10 +65,10 @@ export default function PropertiesPanel({
 
       if (selectedComponent.type === "table") {
         if (key === "rows") {
-          newHeight = calculateTableHeight(value); // 更新组件高度
+          newHeight = calculateTableHeight(value);
         }
         if (key === "columns") {
-          newWidth = calculateTableWidth(value); // 更新组件宽度
+          newWidth = calculateTableWidth(value);
         }
       }
 
@@ -79,7 +82,7 @@ export default function PropertiesPanel({
 
   const handleSizeChange = (key: "width" | "height", value: number) => {
     const { minWidth, minHeight } = calculateMinSize(selectedBox);
-    const newValue = key === "width" ? Math.max(value, 135) : value; // 宽度最小值 135px
+    const newValue = key === "width" ? Math.max(value, 135) : value;
     const newSize = { ...selectedBox.size, [key]: newValue };
 
     if (newSize.width < minWidth || newSize.height < minHeight) {
@@ -119,6 +122,39 @@ export default function PropertiesPanel({
   const handleDeleteBox = () => {
     if (window.confirm("确定要删除这个区块吗？")) {
       onUpdateBox(selectedBox.id, null);
+    }
+  };
+
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (!selectedComponent || selectedComponentIndex === null || !selectedComponent.id) {
+      console.error("No valid component selected:", { selectedComponent, selectedComponentIndex });
+      alert("请先选择一个图片组件并确保其已保存！");
+      return;
+    }
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("componentId", selectedComponent.id.toString());
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const { url } = await response.json();
+      handlePropChange("src", url); // 更新图片的 src
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("图片上传失败，请重试！");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -173,7 +209,7 @@ export default function PropertiesPanel({
           宽度:
           <input
             type="number"
-            min="135" // 最小宽度 135px
+            min="135"
             value={selectedBox.size.width}
             onChange={(e) => handleSizeChange("width", Number(e.target.value))}
             className="w-full border p-1 mt-1 rounded"
@@ -280,13 +316,22 @@ export default function PropertiesPanel({
           )}
           {selectedComponent.type === "image" && (
             <label className="block mt-2">
-              图片URL:
+              上传图片:
               <input
-                type="text"
-                value={selectedComponent.props?.src ?? ""}
-                onChange={(e) => handlePropChange("src", e.target.value)}
-                className="w-full border p-1 mt-1 rounded"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+                className="w-full mt-1"
               />
+              {uploading && <p className="text-sm text-gray-500">上传中...</p>}
+              {selectedComponent.props?.src && (
+                <img
+                  src={selectedComponent.props.src}
+                  alt="Uploaded"
+                  className="mt-2 max-w-full rounded"
+                />
+              )}
             </label>
           )}
           {selectedComponent.type === "date" && (

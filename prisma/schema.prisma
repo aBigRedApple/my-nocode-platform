@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,67 +9,78 @@ datasource db {
 
 model User {
   id        Int        @id @default(autoincrement())
-  email     String     @unique @db.VarChar(191) // 指定长度提高性能
-  name      String     @db.VarChar(100)         // 指定长度
-  password  String     @db.VarChar(255)         // 适合存储加密后的密码
-  layouts   Layout[]                         // 用户创建的项目
-  templates Template[]                       // 用户收藏的模板
-  createdAt DateTime   @default(now())        // 添加创建时间
-  updatedAt DateTime   @updatedAt             // 添加更新时间
+  email     String     @unique @db.VarChar(191)
+  name      String     @db.VarChar(100)
+  password  String     @db.VarChar(255)
+  layouts   Layout[]
+  templates Template[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
-  @@index([email]) // 为常用查询字段添加索引
+  @@index([email])
 }
 
 model Layout {
   id          Int        @id @default(autoincrement())
   userId      Int
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade) // 删除用户时级联删除
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   boxes       Box[]
-  templates   Template[] // 新增的反向关系字段，假设是模板基于某个布局
+  templates   Template[]
   createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt // 添加更新时间
+  updatedAt   DateTime   @updatedAt
 
-  @@index([userId]) // 为外键添加索引
+  @@index([userId])
 }
 
 model Box {
   id        Int        @id @default(autoincrement())
   layoutId  Int
-  layout    Layout     @relation(fields: [layoutId], references: [id], onDelete: Cascade) // 删除布局时级联删除
-  positionX Int        @db.SmallInt // 使用更小的数据类型
-  positionY Int        @db.SmallInt // 使用更小的数据类型
+  layout    Layout     @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  positionX Int        @db.SmallInt
+  positionY Int        @db.SmallInt
   components Component[]
-  createdAt DateTime   @default(now()) // 添加创建时间
-  updatedAt DateTime   @updatedAt    // 添加更新时间
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
-  @@index([layoutId]) // 为外键添加索引
+  @@index([layoutId])
 }
 
 model Component {
   id        Int      @id @default(autoincrement())
   boxId     Int
-  box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade) // 删除盒子时级联删除
-  type      String   @db.VarChar(50) // 指定长度
-  createdAt DateTime @default(now()) // 添加创建时间
-  updatedAt DateTime @updatedAt    // 添加更新时间
+  box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  type      String   @db.VarChar(50)
+  imageId   Int?     @unique // 添加图片关联
+  image     Image?   @relation(fields: [imageId], references: [id], onDelete: SetNull) // 图片删除时置空
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([boxId]) // 为外键添加索引
+  @@index([boxId])
+}
+
+model Image {
+  id        Int       @id @default(autoincrement())
+  path      String    @db.VarChar(255) // 存储图片文件路径
+  size      Int?      // 文件大小（字节），可选
+  component Component? // 一对一关系
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Template {
   id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(100)  // 指定长度
-  description String?   @db.VarChar(255)  // 指定长度，可选
-  thumbnail   String?   @db.VarChar(255)  // 指定长度，可选
-  category    String    @db.VarChar(50)   // 指定长度
-  userId      Int?                        // 添加用户关联，表示收藏者（可选）
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull) // 用户删除时置空
-  layoutId    Int?                        // 添加布局关联，表示模板基于哪个布局（可选）
-  layout      Layout?   @relation(fields: [layoutId], references: [id], onDelete: SetNull) // 布局删除时置空
+  name        String    @db.VarChar(100)
+  description String?   @db.VarChar(255)
+  thumbnail   String?   @db.VarChar(255)
+  category    String    @db.VarChar(50)
+  userId      Int?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  layoutId    Int?
+  layout      Layout?   @relation(fields: [layoutId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@index([userId])    // 为外键添加索引
-  @@index([layoutId])  // 为外键添加索引
-  @@index([category])  // 为常用筛选字段添加索引
+  @@index([userId])
+  @@index([layoutId])
+  @@index([category])
 }
