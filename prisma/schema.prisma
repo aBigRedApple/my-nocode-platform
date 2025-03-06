@@ -24,6 +24,8 @@ model Layout {
   id          Int        @id @default(autoincrement())
   userId      Int
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String     @db.VarChar(100)
+  description String?    @db.VarChar(255)
   boxes       Box[]
   templates   Template[]
   createdAt   DateTime   @default(now())
@@ -38,6 +40,8 @@ model Box {
   layout    Layout     @relation(fields: [layoutId], references: [id], onDelete: Cascade)
   positionX Int        @db.SmallInt
   positionY Int        @db.SmallInt
+  width     Int        @default(300)
+  height    Int        @default(350)
   components Component[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -50,8 +54,11 @@ model Component {
   boxId     Int
   box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
   type      String   @db.VarChar(50)
-  imageId   Int?     @unique // 添加图片关联
-  image     Image?   @relation(fields: [imageId], references: [id], onDelete: SetNull) // 图片删除时置空
+  width     Int      @default(100)
+  height    Int      @default(40)
+  props     Json?
+  imageId   Int?     @unique
+  image     Image?   @relation(fields: [imageId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -60,9 +67,9 @@ model Component {
 
 model Image {
   id        Int       @id @default(autoincrement())
-  path      String    @db.VarChar(255) // 存储图片文件路径
-  size      Int?      // 文件大小（字节），可选
-  component Component? // 一对一关系
+  path      String    @db.VarChar(255)
+  size      Int?
+  component Component?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }

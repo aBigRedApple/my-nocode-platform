@@ -1,75 +1,93 @@
+// api/user/profile/route.ts
 import prisma from '@/prisma/client';
-import jwt from 'jsonwebtoken';
 import { NextRequest, NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
 
-export async function GET(req: NextRequest) {
-  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-  
-  if (!token) {
-    return NextResponse.json({ message: '未提供令牌' }, { status: 401 });
-  }
+// 定义环境变量的密钥
+const JWT_SECRET = process.env.JWT_SECRET || '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2';
 
-  try {
-    const decoded = jwt.verify(token, '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2') as { userId: string };
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, name: true, email: true },
-    });
-    
-    if (!user) {
-      return NextResponse.json({ message: '用户不存在' }, { status: 404 });
-    }
-    
-    const layouts = await prisma.layout.findMany({
-      where: { userId: decoded.userId },
-      select: { id: true, createdAt: true },
-    });
-    
-    const templates = await prisma.template.findMany({
-      where: { userId: decoded.userId },
-      select: { id: true, layoutId: true },
-    });
-    
-    return NextResponse.json({ user, layouts, templates }, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ message: '令牌无效或过期' }, { status: 401 });
-  }
+// 类型定义
+interface UserResponse {
+  user: {
+    name: string;
+    email: string;
+  };
+  layouts: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+  templates: any[];
 }
 
-export async function PUT(req: NextRequest) {
-  const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-  const { name, email } = await req.json();
-  
+interface ErrorResponse {
+  message: string;
+  details?: string;
+}
+
+export async function GET(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) {
-    return NextResponse.json({ message: '未提供令牌' }, { status: 401 });
+    return NextResponse.json({ message: '未授权' } as ErrorResponse, { status: 401 });
   }
-  
+
   try {
-    const decoded = jwt.verify(token, '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2') as { userId: string };
-    
-    // 检查邮箱是否已被其他用户注册
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-    
-    // 如果找到了用户且不是当前用户，则邮箱已被注册
-    if (existingUser && existingUser.id !== decoded.userId) {
-      return NextResponse.json({ message: '邮箱已被注册', code: 'EMAIL_TAKEN' }, { status: 400 });
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email?: string };
+
+    if (!decoded.userId) {
+      return NextResponse.json({ message: '无效的 token，缺少 userId' } as ErrorResponse, { status: 401 });
     }
-    
-    const updatedUser = await prisma.user.update({
+
+    // 使用 userId 查询用户
+    const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      data: { name, email },
-      select: { name: true, email: true },
+      include: {
+        layouts: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        templates: true,
+      },
     });
-    
-    return NextResponse.json(updatedUser, { status: 200 });
-  } catch (error) {
-    // 检查是否为Prisma唯一约束错误（邮箱重复）
-    if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
-      return NextResponse.json({ message: '邮箱已被注册', code: 'EMAIL_TAKEN' }, { status: 400 });
+
+    if (!user) {
+      return NextResponse.json({ message: '用户不存在' } as ErrorResponse, { status: 404 });
     }
-    
-    return NextResponse.json({ message: '更新失败或令牌无效' }, { status: 400 });
+
+    const response: UserResponse = {
+      user: {
+        name: user.name,
+        email: user.email,
+      },
+      layouts: user.layouts,
+      templates: user.templates,
+    };
+
+    return NextResponse.json(response, { status: 200 });
+  } catch (error: any) {
+    console.error('获取用户数据失败:', error);
+    if (error instanceof jwt.JsonWebTokenError) {
+      return NextResponse.json(
+        { message: '无效的 token', details: error.message } as ErrorResponse,
+        { status: 401 }
+      );
+    }
+    if (error instanceof jwt.TokenExpiredError) {
+      return NextResponse.json(
+        { message: 'token 已过期', details: error.message } as ErrorResponse,
+        { status: 401 }
+      );
+    }
+    return NextResponse.json(
+      { message: '服务器错误', details: error.message } as ErrorResponse,
+      { status: 500 }
+    );
   }
 }

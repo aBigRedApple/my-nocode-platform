@@ -18,17 +18,19 @@ const components: ComponentItem[] = [
   { type: "table", label: "表格" },
 ];
 
-export function ComponentPreviewWithProps({
-  type,
-  props = {},
-  width,
-  height,
-}: {
+export interface ComponentPreviewProps {
   type: string;
   props?: Record<string, any>;
   width: number;
   height: number;
-}) {
+}
+
+export const ComponentPreviewWithProps: React.FC<ComponentPreviewProps> = ({
+  type,
+  props = {},
+  width,
+  height,
+}) => {
   switch (type) {
     case "button":
       return (
@@ -52,18 +54,14 @@ export function ComponentPreviewWithProps({
       return (
         <div className="flex items-center" style={{ width, height }}>
           <input type="radio" id="radio" name="radio" className="mr-1" />
-          <label htmlFor="radio" className="text-sm">
-            {props.label || "单选"}
-          </label>
+          <label htmlFor="radio" className="text-sm">{props.label || "单选"}</label>
         </div>
       );
     case "checkbox":
       return (
         <div className="flex items-center" style={{ width, height }}>
           <input type="checkbox" id="checkbox" className="mr-1" />
-          <label htmlFor="checkbox" className="text-sm">
-            {props.label || "多选"}
-          </label>
+          <label htmlFor="checkbox" className="text-sm">{props.label || "多选"}</label>
         </div>
       );
     case "image":
@@ -82,17 +80,11 @@ export function ComponentPreviewWithProps({
         </div>
       );
     case "date":
-      return (
-        <input
-          type="date"
-          className="border p-1 rounded text-sm"
-          style={{ width, height }}
-        />
-      );
+      return <input type="date" className="border p-1 rounded text-sm" style={{ width, height }} />;
     case "dateRange":
       return (
         <div className="flex space-x-1" style={{ width, height }}>
-          <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} /> {/* 均分宽度 */}
+          <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} />
           <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} />
         </div>
       );
@@ -128,40 +120,9 @@ export function ComponentPreviewWithProps({
     default:
       return <div style={{ width, height }}>{type}</div>;
   }
-}
+};
 
-export default function ComponentLibrary() {
-  const [searchTerm, setSearchTerm] = useState<string>("");
-
-  const filteredComponents = components.filter((comp) =>
-    comp.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
-      <div className="p-4 sticky top-0 bg-gray-50 z-10">
-        <h3 className="text-xl font-bold text-gray-800 mb-3">组件库</h3>
-        <input
-          type="text"
-          placeholder="搜索组件..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white shadow-sm text-sm"
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-0">
-        <div className="space-y-3">
-          {filteredComponents.map((comp) => (
-            <DraggableComponent key={comp.type} type={comp.type} label={comp.label} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DraggableComponent({ type, label }: ComponentItem) {
+const DraggableComponent: React.FC<ComponentItem> = ({ type, label }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "component",
     item: { type },
@@ -181,4 +142,36 @@ function DraggableComponent({ type, label }: ComponentItem) {
       <p className="text-xs text-gray-500 mt-1.5">{label}</p>
     </div>
   );
-}
+};
+
+const ComponentLibrary: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const filteredComponents = components.filter((comp) =>
+    comp.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
+      <div className="p-4 sticky top-0 bg-gray-50 z-10">
+        <h3 className="text-xl font-bold text-gray-800 mb-3">组件库</h3>
+        <input
+          type="text"
+          placeholder="搜索组件..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full p-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white shadow-sm text-sm"
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-0">
+        <div className="space-y-3">
+          {filteredComponents.map((comp) => (
+            <DraggableComponent key={comp.type} type={comp.type} label={comp.label} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ComponentLibrary;

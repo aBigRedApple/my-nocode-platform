@@ -1,12 +1,10 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // Import styles for toast notifications
-import axios from "axios";
+import axios from "@/utils/axios";
 import { useAuth } from "@/components/AuthContext";
 
 export default function Login() {
@@ -16,7 +14,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth(); // 使用 Auth Context 的 login 方法
+  const { login } = useAuth();
 
   const validateForm = () => {
     if (!email || !password) {
@@ -31,7 +29,7 @@ export default function Login() {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
@@ -39,25 +37,12 @@ export default function Login() {
     try {
       const response = await axios.post("/api/auth/login", { email, password });
       const { token, user } = response.data;
-      
-      // 保存到 localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      
-      // 使用 AuthContext 的 login 方法
-      login(user);
-      
-      // 触发自定义事件通知其他组件（可选，如果 AuthContext 已经处理了跨页面通信）
-      window.dispatchEvent(new Event('auth-change'));
-      
-      toast.success("登录成功");
-      setTimeout(() => {
-        router.push("/"); 
-      }, 1000);
-    } catch (err) {
+
+      await login(user, token);
+      router.push("/");
+    } catch (err: any) {
       const errorMessage = err.response?.data?.message || "登录失败";
       setError(errorMessage);
-      toast.error("登录失败，请检查您的信息");
     } finally {
       setIsLoading(false);
     }
@@ -128,18 +113,6 @@ export default function Login() {
           </Link>
         </p>
       </div>
-      {/* Toast Notifications */}
-      <ToastContainer
-        position="top-center"
-        autoClose={2000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
     </div>
   );
 }

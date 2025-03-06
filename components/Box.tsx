@@ -4,10 +4,12 @@ import { useDrop } from "react-dnd";
 import { ComponentPreviewWithProps } from "./ComponentLibrary";
 
 export interface ComponentInfo {
+  id?: number;
   type: string;
   width: number;
   height: number;
   props?: Record<string, any>;
+  file?: File;
 }
 
 export interface BoxData {
@@ -33,7 +35,17 @@ export const COMPONENT_DEFAULT_HEIGHTS: Record<string, number> = {
 
 export const COMPONENT_MARGIN = 16;
 
-export default function Box({
+interface BoxProps {
+  box: BoxData;
+  onConfirm: (id: number) => void;
+  onCancel: (id: number) => void;
+  onClick: (id: number) => void;
+  onAddComponent: (boxId: number, component: ComponentInfo) => void;
+  onSelectComponent?: (boxId: number, componentIndex: number) => void;
+  onUpdateBox: (boxId: number, updatedBox: Partial<BoxData> | null) => void;
+}
+
+const Box: React.FC<BoxProps> = ({
   box,
   onConfirm,
   onCancel,
@@ -41,32 +53,22 @@ export default function Box({
   onAddComponent,
   onSelectComponent,
   onUpdateBox,
-}: {
-  box: BoxData;
-  onConfirm: (id: number) => void;
-  onCancel: (id: number) => void;
-  onClick: (id: number) => void;
-  onAddComponent: (boxId: number, component: ComponentInfo) => void;
-  onSelectComponent?: (boxId: number, componentIndex: number) => void;
-  onUpdateBox: (boxId: number, updatedBox: Partial<BoxData>) => void;
-}) {
+}) => {
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const allComponents = useMemo(() => {
-    return [...box.confirmedComponents, ...box.pendingComponents];
-  }, [box.confirmedComponents, box.pendingComponents]);
+  const allComponents = useMemo(
+    () => [...box.confirmedComponents, ...box.pendingComponents],
+    [box.confirmedComponents, box.pendingComponents]
+  );
 
   useEffect(() => {
-    // 计算所有组件的总高度和最大宽度
     const componentsHeight = allComponents.reduce((sum, comp) => sum + comp.height, 0);
     const marginsHeight = allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0;
     const padding = 32;
-    const newHeight = Math.max(componentsHeight + marginsHeight + padding, 350); // 最小高度 350px
+    const newHeight = Math.max(componentsHeight + marginsHeight + padding, 350);
+    const maxComponentWidth = allComponents.reduce((max, comp) => Math.max(max, comp.width), 135);
+    const newWidth = Math.max(maxComponentWidth + 32, box.size.width);
 
-    const maxComponentWidth = allComponents.reduce((max, comp) => Math.max(max, comp.width), 135); // 最小宽度 135
-    const newWidth = Math.max(maxComponentWidth + 32, box.size.width); // 加 padding
-
-    // 如果高度或宽度需要更新，则调用 onUpdateBox
     if (newHeight !== box.size.height || newWidth !== box.size.width) {
       onUpdateBox(box.id, { size: { width: newWidth, height: newHeight } });
     }
@@ -79,8 +81,10 @@ export default function Box({
       const componentHeight = baseHeight;
       const extraSpaceNeeded = componentHeight + (allComponents.length > 0 ? COMPONENT_MARGIN : 0);
 
-      const currentHeight = allComponents.reduce((sum, comp) => sum + comp.height, 0) +
-        (allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0) + 32;
+      const currentHeight =
+        allComponents.reduce((sum, comp) => sum + comp.height, 0) +
+        (allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0) +
+        32;
 
       if (currentHeight + extraSpaceNeeded <= box.size.height) {
         onAddComponent(box.id, { type: item.type, width: 100, height: componentHeight, props: {} });
@@ -95,7 +99,7 @@ export default function Box({
 
   const renderComponents = (components: ComponentInfo[]) => {
     let currentTop = 16;
-    return components.map((comp: ComponentInfo, index: number) => {
+    return components.map((comp, index) => {
       const componentElement = (
         <div
           key={index}
@@ -127,7 +131,7 @@ export default function Box({
       className={`absolute ${box.isConfirmed ? "" : "border-2 border-blue-500"} p-4 ${isOver ? "bg-blue-50" : "bg-white"}`}
       style={{
         width: box.size.width,
-        height: box.size.height, // 使用动态调整的高度
+        height: box.size.height,
         position: "relative",
         cursor: box.isConfirmed ? "pointer" : "default",
       }}
@@ -166,4 +170,6 @@ export default function Box({
       )}
     </div>
   );
-}
+};
+
+export default Box;
