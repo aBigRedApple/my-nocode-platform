@@ -1,4 +1,3 @@
-// api/user/profile/route.ts
 import prisma from '@/prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
@@ -40,7 +39,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: '无效的 token，缺少 userId' } as ErrorResponse, { status: 401 });
     }
 
-    // 使用 userId 查询用户
+    // 使用 userId 查询用户，并按 updatedAt 降序排序 layouts
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       include: {
@@ -51,6 +50,9 @@ export async function GET(req: NextRequest) {
             description: true,
             createdAt: true,
             updatedAt: true,
+          },
+          orderBy: {
+            updatedAt: 'desc', // 按更新时间降序排序
           },
         },
         templates: true,
