@@ -26,7 +26,6 @@ const ChangePasswordModal: React.FC<Props> = ({ visible, onClose, onConfirm, log
   const handleChangePassword = async () => {
     try {
       const { newPassword } = form.getFieldsValue();
-      console.log("新密码:", newPassword); // 调试用
 
       onConfirm(async () => {
         try {

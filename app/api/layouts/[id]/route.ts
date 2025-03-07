@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/client";
 import jwt from "jsonwebtoken";
+import path from "path";
+import fs from "fs/promises";
 
 const JWT_SECRET = process.env.JWT_SECRET || '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2';
+
+async function ensureUploadDir() {
+  const uploadDir = path.join(process.cwd(), "public/uploads");
+  try {
+    await fs.mkdir(uploadDir, { recursive: true });
+  } catch (error) {
+    console.error("创建上传目录失败:", error);
+  }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");

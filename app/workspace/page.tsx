@@ -7,14 +7,21 @@ import Workspace from "../../components/Workspace";
 import PropertiesPanel from "../../components/PropertiesPanel";
 import axios from "../../utils/axios";
 import { BoxData, ComponentInfo } from "../../components/Box";
+import { useRouter } from "next/navigation";
 
 const WorkspacePage: React.FC = () => {
   const [boxes, setBoxes] = useState<BoxData[]>([]);
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState<number | null>(null);
+  const router = useRouter();
 
   // 加载已有布局（示例：加载最新布局，可选）
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/auth/login");
+      return;
+    }
     const loadLayout = async () => {
       try {
         const response = await axios.get<{ boxes: any[] }>("/api/project/load");

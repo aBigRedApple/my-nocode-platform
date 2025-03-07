@@ -3,6 +3,7 @@ import prisma from "@/prisma/client";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2';
+
 export async function POST(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!token) {
@@ -11,10 +12,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    console.log("Token 验证成功，用户 ID:", decoded.userId);
 
     const { templateId } = await req.json();
-    console.log("请求的模板 ID:", templateId);
 
     if (!templateId || isNaN(templateId)) {
       return NextResponse.json({ message: "缺少或无效的模板 ID" }, { status: 400 });
@@ -24,10 +23,8 @@ export async function POST(req: NextRequest) {
       where: { id: Number(templateId) },
     });
     if (!template) {
-      console.log("模板未找到，ID:", templateId);
       return NextResponse.json({ message: "模板不存在" }, { status: 404 });
     }
-    console.log("找到模板:", template.name);
 
     // 创建新项目，并同步 boxes 和 components
     const project = await prisma.layout.create({
@@ -62,8 +59,8 @@ export async function POST(req: NextRequest) {
     });
     console.log("新项目创建成功，ID:", project.id);
 
-    // 返回完整项目数据，与 GET /api/layouts/<id> 一致
-    return NextResponse.json(project, { status: 201 });
+    // 只返回 projectId，与前端期望一致
+    return NextResponse.json({ projectId: project.id }, { status: 201 });
   } catch (error) {
     console.error("创建项目失败:", error);
     if (error instanceof jwt.TokenExpiredError) {

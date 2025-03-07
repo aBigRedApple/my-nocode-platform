@@ -96,11 +96,9 @@ const MarketPlace = () => {
   };
 
   const handleUseTemplate = async (templateId: number) => {
-    const token = localStorage.getItem("token");
     try {
-      const response = await axios.post("/api/layouts", { templateId }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.post("/api/layouts", { templateId }
+      );
       const { projectId } = response.data;
       toast.success("项目创建成功，即将跳转到编辑器...");
       setPreviewVisible(false);
