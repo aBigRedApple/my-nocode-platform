@@ -93,3 +93,28 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export async function PUT(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) {
+    return NextResponse.json({ message: "未授权" }, { status: 401 });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const body = await req.json(); // 获取请求体中的 name 和 email
+    const { name, email } = body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { name, email },
+    });
+
+    return NextResponse.json(
+      { user: { name: updatedUser.name, email: updatedUser.email } },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    return NextResponse.json({ message: "更新失败", details: error.message }, { status: 500 });
+  }
+}

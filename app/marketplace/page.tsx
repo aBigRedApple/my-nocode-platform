@@ -2,19 +2,19 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Input, Button, Select, Card, Skeleton, Empty, Pagination, Modal } from "antd";
 import { useRouter } from "next/navigation";
-import { SearchOutlined } from "@ant-design/icons";
+import { SearchOutlined, HeartOutlined, HeartFilled } from "@ant-design/icons";
 import Image from "next/image";
 import axios from "@/utils/axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// 类型定义
 interface Template {
   id: number;
   name: string;
   description?: string;
   thumbnail?: string;
   category: string;
+  isFavorite?: boolean;
 }
 
 const { Option } = Select;
@@ -23,8 +23,8 @@ const MarketPlace = () => {
   const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState(""); // 搜索输入值
-  const [activeSearchTerm, setActiveSearchTerm] = useState(""); // 当前实际用于搜索的值
+  const [searchValue, setSearchValue] = useState("");
+  const [activeSearchTerm, setActiveSearchTerm] = useState("");
   const [category, setCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalTemplates, setTotalTemplates] = useState(0);
@@ -33,7 +33,6 @@ const MarketPlace = () => {
   const pageSize = 8;
   const [originalSearchQuery, setOriginalSearchQuery] = useState("");
 
-  // 获取模板数据
   const fetchTemplates = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -47,8 +46,10 @@ const MarketPlace = () => {
       const response = await axios.post("/api/templates", {
         page: currentPage,
         pageSize,
-        search: activeSearchTerm || undefined, // 使用activeSearchTerm而不是searchValue
+        search: activeSearchTerm.trim() || undefined,
         category: category === "all" ? undefined : category,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const { templates: templateList, total, searchQuery } = response.data;
@@ -65,46 +66,41 @@ const MarketPlace = () => {
     }
   }, [currentPage, activeSearchTerm, category, router]);
 
-  // 当实际搜索词、分页或分类变化时获取模板
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  // 处理搜索输入变化 - 只更新输入框的值，不触发搜索
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchValue(value); // 只更新搜索框内容，不触发搜索
+    setSearchValue(e.target.value);
   };
 
-  // 执行搜索 - 仅在回车时触发
   const executeSearch = () => {
-    setActiveSearchTerm(searchValue); // 更新用于搜索的实际值
-    setCurrentPage(1); // 重置为第一页
+    setActiveSearchTerm(searchValue);
+    setCurrentPage(1);
   };
 
-  // 监听回车键进行搜索
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       executeSearch();
     }
   };
 
-  // 处理分类变化
   const handleCategoryChange = (value: string) => {
     setCategory(value);
-    setCurrentPage(1); // 重置分页
+    setCurrentPage(1);
   };
 
-  // 预览模板
   const handlePreview = (template: Template) => {
     setSelectedTemplate(template);
     setPreviewVisible(true);
   };
 
-  // 使用模板
   const handleUseTemplate = async (templateId: number) => {
+    const token = localStorage.getItem("token");
     try {
-      const response = await axios.post("/api/layouts", { templateId });
+      const response = await axios.post("/api/layouts", { templateId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const { projectId } = response.data;
       toast.success("项目创建成功，即将跳转到编辑器...");
       setPreviewVisible(false);
@@ -115,16 +111,42 @@ const MarketPlace = () => {
     }
   };
 
+  const handleFavorite = async (templateId: number, isFavorite: boolean) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.info("请登录后收藏");
+      router.push("/auth/login");
+      return;
+    }
+
+    try {
+      await axios.post("/api/favorites", {
+        templateId,
+        action: isFavorite ? 'remove' : 'add',
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTemplates(prev =>
+        prev.map(template =>
+          template.id === templateId ? { ...template, isFavorite: !isFavorite } : template
+        )
+      );
+      toast.success(isFavorite ? '取消收藏成功' : '收藏成功');
+    } catch (error) {
+      console.error("收藏操作失败:", error);
+      toast.error("操作失败，请重试");
+    }
+  };
+
   return (
     <div className="flex flex-col bg-gray-100 pt-24 px-4 md:px-8 py-8 h-screen">
       <ToastContainer />
-      {/* 搜索和筛选区域 */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <Input
           placeholder="多关键词搜索，空格分隔，按回车执行搜索..."
-          onChange={handleSearchChange} // 监听输入变化，但不触发搜索
-          onKeyDown={handleKeyDown} // 监听回车键
-          value={searchValue} // 绑定到搜索框值
+          onChange={handleSearchChange}
+          onKeyDown={handleKeyDown}
+          value={searchValue}
           prefix={<SearchOutlined />}
           allowClear
           className="w-full sm:w-1/2"
@@ -142,7 +164,6 @@ const MarketPlace = () => {
         </Select>
       </div>
 
-      {/* 搜索结果信息 */}
       {originalSearchQuery && (
         <div className="mb-4">
           <p className="text-sm text-gray-600">
@@ -153,47 +174,56 @@ const MarketPlace = () => {
         </div>
       )}
 
-      {/* 模板列表 */}
       <div className="flex-grow overflow-auto mb-6">
         {loading ? (
           <Skeleton active paragraph={{ rows: 8 }} />
         ) : templates.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {templates.map((template) => (
-              <Card
-                key={template.id}
-                hoverable
-                cover={
-                  <Image
-                    src={template.thumbnail || "/placeholder.png"}
-                    alt={template.name}
-                    width={300}
-                    height={160}
-                    className="object-cover"
+            {templates.map((template) => {
+              const isFavorite = template.isFavorite || false;
+              return (
+                <Card
+                  key={template.id}
+                  hoverable
+                  cover={
+                    <Image
+                      src={template.thumbnail || "/placeholder.png"}
+                      alt={template.name}
+                      width={300}
+                      height={160}
+                      className="object-cover"
+                    />
+                  }
+                  actions={[
+                    <Button
+                      key="favorite"
+                      type="link"
+                      onClick={() => handleFavorite(template.id, isFavorite)}
+                      icon={isFavorite ? <HeartFilled style={{ color: 'red' }} /> : <HeartOutlined />}
+                    >
+                      {isFavorite ? '取消收藏' : '收藏'}
+                    </Button>,
+                    <Button key="preview" type="link" onClick={() => handlePreview(template)}>
+                      预览
+                    </Button>,
+                    <Button key="use" type="primary" onClick={() => handleUseTemplate(template.id)}>
+                      使用
+                    </Button>,
+                  ]}
+                >
+                  <Card.Meta
+                    title={template.name}
+                    description={template.description || "暂无描述"}
                   />
-                }
-                actions={[
-                  <Button key="preview" type="link" onClick={() => handlePreview(template)}>
-                    预览
-                  </Button>,
-                  <Button key="use" type="primary" onClick={() => handleUseTemplate(template.id)}>
-                    使用
-                  </Button>,
-                ]}
-              >
-                <Card.Meta
-                  title={template.name}
-                  description={template.description || "暂无描述"}
-                />
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Empty description="暂无符合条件的模板" />
         )}
       </div>
 
-      {/* 分页 */}
       {totalTemplates > pageSize && (
         <div className="flex justify-center mb-6">
           <Pagination
@@ -206,7 +236,6 @@ const MarketPlace = () => {
         </div>
       )}
 
-      {/* 模板预览模态框 */}
       <Modal
         title={selectedTemplate?.name || "模板预览"}
         open={previewVisible}

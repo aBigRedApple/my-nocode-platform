@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
-  email     String     @unique @db.VarChar(191)
-  name      String     @db.VarChar(100)
-  password  String     @db.VarChar(255)
-  layouts   Layout[]
-  templates Template[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id                Int                @id @default(autoincrement())
+  email             String             @unique @db.VarChar(191)
+  name              String             @db.VarChar(100)
+  password          String             @db.VarChar(255)
+  layouts           Layout[]
+  templates         Template[]
+  favorites         Favorite[] // 用户收藏的模板
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([email])
 }
@@ -75,19 +76,30 @@ model Image {
 }
 
 model Template {
-  id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(100)
-  description String?   @db.VarChar(255)
-  thumbnail   String?   @db.VarChar(255)
-  category    String    @db.VarChar(50)
-  userId      Int?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  layoutId    Int?
-  layout      Layout?   @relation(fields: [layoutId], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                Int                @id @default(autoincrement())
+  name              String             @db.VarChar(100)
+  description       String?            @db.VarChar(255)
+  thumbnail         String?            @db.VarChar(255)
+  category          String             @db.VarChar(50)
+  userId            Int?
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  layoutId          Int?
+  layout            Layout?            @relation(fields: [layoutId], references: [id], onDelete: SetNull)
+  favorites         Favorite[] // 被用户收藏的关系
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 
   @@index([userId])
   @@index([layoutId])
   @@index([category])
+}
+
+model Favorite {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  templateId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }

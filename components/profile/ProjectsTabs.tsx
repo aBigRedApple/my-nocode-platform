@@ -1,7 +1,6 @@
-// components/profile/ProjectsTabs.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, Button, Skeleton, Empty, Modal } from "antd";
-import { ProjectOutlined, AppstoreOutlined } from "@ant-design/icons";
+import { ProjectOutlined, AppstoreOutlined, DeleteOutlined } from "@ant-design/icons";
 import ProjectItem from "./ProjectItem";
 import axios from "@/utils/axios";
 import { toast } from "react-toastify";
@@ -19,20 +18,52 @@ interface Template {
   id: number;
   name: string;
   description: string | null;
-  layoutId: number | null;
+  thumbnail?: string | null;
+  category: string;
 }
 
 interface Props {
   loading: boolean;
   projects: Project[];
-  templates: Template[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   router: NextRouter;
 }
 
-const ProjectsTabs: React.FC<Props> = ({ loading, projects, templates, setProjects, router }) => {
+const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router }) => {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [isTemplateDeleteModalVisible, setIsTemplateDeleteModalVisible] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<number | null>(null);
+
+  // 获取收藏的模板
+  const fetchFavorites = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.info("请登录后查看收藏模板");
+      router.push("/auth/login");
+      return;
+    }
+
+    setTemplatesLoading(true);
+    try {
+      const response = await axios.get("/api/favorites/templates", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTemplates(response.data.templates || []);
+    } catch (error) {
+      console.error("获取收藏模板失败:", error);
+      toast.error("无法加载收藏模板，请稍后重试");
+      setTemplates([]);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
 
   const handleDeleteProject = async (id: number) => {
     try {
@@ -62,6 +93,45 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, templates, setProjec
   const handleCancelDelete = () => {
     setIsDeleteModalVisible(false);
     setProjectToDelete(null);
+  };
+
+  // 删除收藏模板
+  const handleDeleteTemplate = async (id: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.info("请登录后操作");
+      return;
+    }
+
+    try {
+      await axios.post(
+        "/api/favorites",
+        { templateId: id, action: "remove" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setTemplates(templates.filter((template) => template.id !== id));
+      toast.success("已取消收藏");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "取消收藏失败，请重试");
+    }
+  };
+
+  const showTemplateDeleteConfirm = (id: number) => {
+    setTemplateToDelete(id);
+    setIsTemplateDeleteModalVisible(true);
+  };
+
+  const handleConfirmTemplateDelete = () => {
+    if (templateToDelete !== null) {
+      handleDeleteTemplate(templateToDelete);
+      setIsTemplateDeleteModalVisible(false);
+      setTemplateToDelete(null);
+    }
+  };
+
+  const handleCancelTemplateDelete = () => {
+    setIsTemplateDeleteModalVisible(false);
+    setTemplateToDelete(null);
   };
 
   return (
@@ -98,7 +168,7 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, templates, setProjec
                           key={project.id}
                           project={project}
                           onEdit={() => router.push(`/editor/${project.id}`)}
-                          onDelete={() => showDeleteConfirm(project.id)} // 修改为显示确认框
+                          onDelete={() => showDeleteConfirm(project.id)}
                         />
                       ))}
                     </div>
@@ -114,27 +184,40 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, templates, setProjec
             label: (
               <span className="flex items-center gap-2">
                 <AppstoreOutlined />
-                我的模板
+                我收藏的模板
               </span>
             ),
             children: (
               <div className="flex flex-col h-full">
                 <div className="flex-1 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
-                  {loading ? (
+                  {templatesLoading ? (
                     <Skeleton active paragraph={{ rows: 6 }} />
                   ) : templates.length > 0 ? (
                     <div className="grid gap-4">
                       {templates.map((template) => (
-                        <div key={template.id} className="p-4 border rounded-lg">
-                          <h3 className="font-semibold">{template.name}</h3>
-                          <p className="text-sm text-gray-500">{template.description || "暂无描述"}</p>
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={() => router.push(`/template/${template.id}`)}
-                          >
-                            查看
-                          </Button>
+                        <div key={template.id} className="p-4 border rounded-lg flex items-center gap-4">
+                          {template.thumbnail && (
+                            <img
+                              src={template.thumbnail}
+                              alt={template.name}
+                              className="w-24 h-16 object-cover rounded"
+                            />
+                          )}
+                          <div className="flex-1">
+                            <h3 className="font-semibold">{template.name}</h3>
+                            <p className="text-sm text-gray-500">{template.description || "暂无描述"}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="default"
+                              size="small"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => showTemplateDeleteConfirm(template.id)}
+                            >
+                              删除
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -148,9 +231,9 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, templates, setProjec
         ]}
       />
 
-      {/* 删除确认模态框 */}
+      {/* 项目删除确认模态框 */}
       <Modal
-        title="确认删除"
+        title="确认删除项目"
         open={isDeleteModalVisible}
         onOk={handleConfirmDelete}
         onCancel={handleCancelDelete}
@@ -159,6 +242,19 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, templates, setProjec
         okButtonProps={{ danger: true }}
       >
         <p>确定要删除此项目吗？此操作不可撤销。</p>
+      </Modal>
+
+      {/* 模板删除确认模态框 */}
+      <Modal
+        title="确认取消收藏"
+        open={isTemplateDeleteModalVisible}
+        onOk={handleConfirmTemplateDelete}
+        onCancel={handleCancelTemplateDelete}
+        okText="确认"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+      >
+        <p>确定要取消收藏此模板吗？</p>
       </Modal>
     </div>
   );

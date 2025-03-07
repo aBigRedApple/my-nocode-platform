@@ -41,6 +41,7 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [passwordChangeCallback, setPasswordChangeCallback] = useState<(() => Promise<void>) | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -80,6 +81,14 @@ const Profile: React.FC = () => {
     router.push("/auth/login");
   };
 
+  const handleConfirmPasswordChange = async () => {
+    if (passwordChangeCallback) {
+      await passwordChangeCallback();
+      setPasswordChangeCallback(null);
+      setIsConfirmModalVisible(false);
+    }
+  };
+
   if (authLoading) return <div>Loading...</div>;
 
   return (
@@ -111,7 +120,10 @@ const Profile: React.FC = () => {
       <ChangePasswordModal
         visible={isChangePasswordModalVisible}
         onClose={() => setIsChangePasswordModalVisible(false)}
-        onConfirm={() => setIsConfirmModalVisible(true)}
+        onConfirm={(callback) => {
+          setPasswordChangeCallback(() => callback);
+          setIsConfirmModalVisible(true);
+        }}
         logout={logout}
         router={router}
       />
@@ -120,12 +132,7 @@ const Profile: React.FC = () => {
         title="确认修改密码"
         content="修改密码后将需要重新登录，确定要继续吗？"
         onCancel={() => setIsConfirmModalVisible(false)}
-        onConfirm={async () => {
-          const formData = await document.querySelector("form")?.getAttribute("data-values"); // 示例，需适配实际表单
-          await axios.put("/api/user/password", { password: formData });
-          logout();
-          router.push("/auth/login");
-        }}
+        onConfirm={handleConfirmPasswordChange}
       />
       <ConfirmModal
         visible={isLogoutModalVisible}

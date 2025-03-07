@@ -1,53 +1,74 @@
-import prisma from '@/prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import jwt from 'jsonwebtoken';
+
+const prisma = new PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2';
 
 export async function POST(req: NextRequest) {
-  const { search, category, page, pageSize } = await req.json();
-  
-  console.log("接收到的请求数据:", { search, category, page, pageSize }); // 调试输出
-
-  if (isNaN(page) || page < 1 || isNaN(pageSize) || pageSize < 1) {
-    return NextResponse.json({ error: "无效的分页参数" }, { status: 400 });
-  }
-
   try {
-    const where: prisma.TemplateWhereInput = {};
+    const body = await req.json().catch(() => ({}));
+    const { page = 1, pageSize = 8, search, category } = body;
 
-    // 处理搜索逻辑
-    if (search && search.trim()) {
-      const keywords = search.trim().split(/\s+/).filter(k => k !== "");
-      if (keywords.length > 0) {
-        where.AND = keywords.map((keyword) => ({
-          OR: [
-            { name: { contains: keyword } },
-            { description: { contains: keyword } },
-          ],
-        }));
+    const token = req.headers.get('authorization')?.replace('Bearer ', '');
+    let userId: number | null = null;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+        userId = decoded.userId;
+      } catch (jwtError) {
+        console.error('JWT 验证失败:', jwtError);
       }
     }
 
-    // 处理分类逻辑
-    if (category && category !== "all") {
-      where.category = { equals: category };
+    const whereClause: any = {};
+    if (search && typeof search === 'string' && search.trim()) {
+      whereClause.OR = [
+        { name: { contains: search.trim() } },
+        { description: { contains: search.trim() } },
+      ];
+    }
+    if (category && category !== 'all') {
+      whereClause.category = category;
     }
 
-    // 查询模板和统计数量
-    const [templates, total] = await Promise.all([
-      prisma.template.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.template.count({ where }),
-    ]);
+    const templates = await prisma.template.findMany({
+      where: whereClause,
+      skip: (Number(page) - 1) * Number(pageSize),
+      take: Number(pageSize),
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const total = await prisma.template.count({ where: whereClause });
+
+    let favorites: number[] = [];
+    if (userId) {
+      favorites = (await prisma.favorite.findMany({
+        where: { userId },
+        select: { templateId: true },
+      })).map(fav => fav.templateId);
+    }
+
+    const enrichedTemplates = templates.map(template => ({
+      id: template.id,
+      name: template.name,
+      description: template.description || undefined,
+      thumbnail: template.thumbnail || undefined,
+      category: template.category,
+      isFavorite: favorites.includes(template.id),
+    }));
 
     return NextResponse.json(
-      { templates, total, searchQuery: search },
+      { templates: enrichedTemplates, total, searchQuery: search || '' },
       { status: 200 }
     );
   } catch (error) {
-    console.error("查询模板失败:", error);
-    return NextResponse.json({ error: "服务器错误", details: error.message }, { status: 500 });
+    console.error('获取模板失败:', error);
+    return NextResponse.json(
+      { message: '服务器错误', details: error instanceof Error ? error.message : '未知错误' },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
   }
 }

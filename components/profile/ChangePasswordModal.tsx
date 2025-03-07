@@ -1,5 +1,4 @@
-// components/profile/ChangePasswordModal.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import { Modal, Form, Input, Button } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import axios from "@/utils/axios";
@@ -9,7 +8,7 @@ import { NextRouter } from "next/router";
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onConfirm: (callback: () => void) => void;
+  onConfirm: (callback: () => Promise<void>) => void;
   logout: () => void;
   router: NextRouter;
 }
@@ -17,22 +16,38 @@ interface Props {
 const ChangePasswordModal: React.FC<Props> = ({ visible, onClose, onConfirm, logout, router }) => {
   const [form] = Form.useForm();
 
+  // 每次打开 Modal 时清空表单
+  useEffect(() => {
+    if (visible) {
+      form.resetFields();
+    }
+  }, [visible, form]);
+
   const handleChangePassword = async () => {
     try {
       const { newPassword } = form.getFieldsValue();
-      await axios.put("/api/user/password", { password: newPassword });
-      onClose();
-      toast.success("密码已修改，请重新登录");
-      logout();
-      router.push("/auth/login");
+      console.log("新密码:", newPassword); // 调试用
+
+      onConfirm(async () => {
+        try {
+          await axios.put("/api/user/password", { password: newPassword });
+          toast.success("密码已修改，请重新登录");
+          onClose(); // 请求成功后关闭修改密码框
+          logout();
+          router.push("/auth/login");
+        } catch (error: any) {
+          toast.error(error?.response?.data?.message || "修改密码失败");
+          throw error; // 抛出错误以防止后续逻辑执行
+        }
+      });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "修改密码失败");
+      toast.error("表单验证失败，请检查输入");
     }
   };
 
   return (
     <Modal title="修改密码" open={visible} onCancel={onClose} footer={null}>
-      <Form form={form} layout="vertical" onFinish={() => onConfirm(handleChangePassword)}>
+      <Form form={form} layout="vertical" onFinish={handleChangePassword}>
         <Form.Item
           name="newPassword"
           rules={[
