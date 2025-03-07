@@ -1,106 +1,38 @@
-import prisma from "@/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/prisma/client";
 import jwt from "jsonwebtoken";
-import path from "path";
-import { promises as fs } from "fs";
 
-const JWT_SECRET = process.env.JWT_SECRET || "3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2";
-
-interface LayoutResponse {
-  id: number;
-  name: string;
-  description: string | null;
-  boxes: Array<{
-    id: number;
-    positionX: number;
-    positionY: number;
-    width: number;
-    height: number;
-    components: Array<{
-      id: number;
-      type: string;
-      width: number;
-      height: number;
-      props: any;
-      imageId?: number;
-    }>;
-  }>;
-}
-
-interface ErrorResponse {
-  message: string;
-  details?: string;
-}
-
-const ensureUploadDir = async () => {
-  const uploadDir = path.join(process.cwd(), "public/uploads");
-  try {
-    await fs.access(uploadDir, fs.constants.W_OK);
-    console.log("上传目录存在且可写:", uploadDir);
-  } catch (error) {
-    console.log("创建上传目录:", uploadDir);
-    await fs.mkdir(uploadDir, { recursive: true });
-  }
-};
-
+const JWT_SECRET = process.env.JWT_SECRET || '3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2';
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!token) {
-    return NextResponse.json({ message: "未授权" } as ErrorResponse, { status: 401 });
+    return NextResponse.json({ message: "未授权" }, { status: 401 });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     const layoutId = parseInt(params.id);
     if (isNaN(layoutId)) {
-      return NextResponse.json({ message: "无效的项目 ID" } as ErrorResponse, { status: 400 });
+      return NextResponse.json({ message: "无效的项目 ID" }, { status: 400 });
     }
 
     const layout = await prisma.layout.findUnique({
-      where: { id: layoutId },
+      where: { id: layoutId, userId: decoded.userId },
       include: {
         boxes: {
-          include: {
-            components: {
-              select: {
-                id: true,
-                type: true,
-                width: true,
-                height: true,
-                props: true,
-                imageId: true,
-              },
-            },
-          },
+          include: { components: true },
         },
       },
     });
 
-    if (!layout || layout.userId !== decoded.userId) {
-      return NextResponse.json({ message: "项目不存在或无权限" } as ErrorResponse, { status: 404 });
+    if (!layout) {
+      return NextResponse.json({ message: "项目不存在" }, { status: 404 });
     }
 
-    const response: LayoutResponse = {
-      id: layout.id,
-      name: layout.name,
-      description: layout.description,
-      boxes: layout.boxes.map((box) => ({
-        id: box.id,
-        positionX: box.positionX,
-        positionY: box.positionY,
-        width: box.width,
-        height: box.height,
-        components: box.components,
-      })),
-    };
-
-    return NextResponse.json(response, { status: 200 });
-  } catch (error: any) {
-    console.error("获取项目数据失败:", error);
-    if (error instanceof jwt.JsonWebTokenError) {
-      return NextResponse.json({ message: "无效的 token", details: error.message } as ErrorResponse, { status: 401 });
-    }
-    return NextResponse.json({ message: "服务器错误", details: error.message } as ErrorResponse, { status: 500 });
+    return NextResponse.json(layout, { status: 200 });
+  } catch (error) {
+    console.error("获取项目失败:", error);
+    return NextResponse.json({ message: "服务器错误" }, { status: 500 });
   }
 }
 

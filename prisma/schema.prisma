@@ -7,49 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 用户表
 model User {
-  id                Int                @id @default(autoincrement())
-  email             String             @unique @db.VarChar(191)
-  name              String             @db.VarChar(100)
-  password          String             @db.VarChar(255)
-  layouts           Layout[]
-  templates         Template[]
-  favorites         Favorite[] // 用户收藏的模板
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id        Int        @id @default(autoincrement())
+  email     String     @unique @db.VarChar(191)
+  name      String     @db.VarChar(100)
+  password  String     @db.VarChar(255)
+  layouts   Layout[]   // 用户创建的项目
+  templates Template[] // 用户创建的模板
+  favorites Favorite[] // 用户的收藏
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([email])
 }
 
+// 项目表（Layout）
 model Layout {
-  id          Int        @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   userId      Int
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String     @db.VarChar(100)
-  description String?    @db.VarChar(255)
-  boxes       Box[]
-  templates   Template[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String         @db.VarChar(100)
+  description String?        @db.VarChar(191)
+  content     Json?          // 存储项目内容（与模板内容格式相同）
+  boxes       Box[]          // 项目中的盒子
+  layoutLinks LayoutTemplate[] // 项目关联的模板
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([userId])
 }
 
+// 盒子表（Box）
 model Box {
-  id        Int        @id @default(autoincrement())
-  layoutId  Int
-  layout    Layout     @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  positionX Int        @db.SmallInt
-  positionY Int        @db.SmallInt
-  width     Int        @default(300)
-  height    Int        @default(350)
-  components Component[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         Int         @id @default(autoincrement())
+  layoutId   Int
+  layout     Layout      @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  positionX  Int         @db.SmallInt
+  positionY  Int         @db.SmallInt
+  width      Int         @default(300)
+  height     Int         @default(350)
+  components Component[] // 盒子中的组件
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 
   @@index([layoutId])
 }
 
+// 组件表（Component）
 model Component {
   id        Int      @id @default(autoincrement())
   boxId     Int
@@ -57,49 +62,71 @@ model Component {
   type      String   @db.VarChar(50)
   width     Int      @default(100)
   height    Int      @default(40)
-  props     Json?
+  props     Json?    // 组件属性
   imageId   Int?     @unique
   image     Image?   @relation(fields: [imageId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([boxId])
+  @@index([type])
 }
 
+// 图片表（Image）
 model Image {
-  id        Int       @id @default(autoincrement())
-  path      String    @db.VarChar(255)
-  size      Int?
-  component Component?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        Int        @id @default(autoincrement())
+  path      String     @db.VarChar(191)
+  size      Int?       // 文件大小（可选）
+  component Component? // 一对一关系
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([path])
 }
 
+// 模板表（Template）
 model Template {
-  id                Int                @id @default(autoincrement())
-  name              String             @db.VarChar(100)
-  description       String?            @db.VarChar(255)
-  thumbnail         String?            @db.VarChar(255)
-  category          String             @db.VarChar(50)
-  userId            Int?
-  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  layoutId          Int?
-  layout            Layout?            @relation(fields: [layoutId], references: [id], onDelete: SetNull)
-  favorites         Favorite[] // 被用户收藏的关系
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(100)
+  description String?        @db.VarChar(191)
+  thumbnail   String?        @db.VarChar(191)
+  category    String         @db.VarChar(50)
+  userId      Int?           // 创建模板的用户（可选）
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  content     Json?          // 模板预置内容
+  layoutLinks LayoutTemplate[] // 模板关联的项目
+  favorites   Favorite[]     // 收藏关系
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([userId])
-  @@index([layoutId])
   @@index([category])
 }
 
+// Layout 和 Template 的多对多关系中间表
+model LayoutTemplate {
+  layoutId   Int
+  templateId Int
+  layout     Layout   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([layoutId, templateId])
+  @@index([layoutId])
+  @@index([templateId])
+}
+
+// 收藏表（Favorite）
 model Favorite {
   id         Int      @id @default(autoincrement())
   userId     Int
   templateId Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, templateId])
+  @@index([userId])
+  @@index([templateId])
 }
