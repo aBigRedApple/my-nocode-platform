@@ -97,8 +97,7 @@ const MarketPlace = () => {
 
   const handleUseTemplate = async (templateId: number) => {
     try {
-      const response = await axios.post("/api/layouts", { templateId }
-      );
+      const response = await axios.post("/api/layouts", { templateId });
       const { projectId } = response.data;
       toast.success("项目创建成功，即将跳转到编辑器...");
       setPreviewVisible(false);
@@ -184,13 +183,16 @@ const MarketPlace = () => {
                   key={template.id}
                   hoverable
                   cover={
-                    <Image
-                      src={template.thumbnail || "/placeholder.png"}
-                      alt={template.name}
-                      width={300}
-                      height={160}
-                      className="object-cover"
-                    />
+                    <div className="relative h-40">
+                      <Image
+                        src={template.thumbnail || "/placeholder.png"}
+                        alt={template.name}
+                        layout="fill"
+                        objectFit="cover"
+                        objectPosition="top"
+                        className="rounded-t-md"
+                      />
+                    </div>
                   }
                   actions={[
                     <Button
@@ -250,15 +252,16 @@ const MarketPlace = () => {
             使用此模板
           </Button>,
         ]}
-        width={800}
+        width={500}
+        styles={{ body: { maxHeight: '68vh', overflowY: 'auto' } }}
       >
         {selectedTemplate && (
           <div>
             <Image
               src={selectedTemplate.thumbnail || "/placeholder.png"}
               alt={selectedTemplate.name}
-              width={800}
-              height={400}
+              width={450}
+              height={260}
               className="mb-4 object-contain"
             />
             <p>{selectedTemplate.description || "暂无描述"}</p>
