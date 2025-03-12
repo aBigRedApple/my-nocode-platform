@@ -42,7 +42,8 @@ model Box {
   layout     Layout      @relation(fields: [layoutId], references: [id], onDelete: Cascade)
   positionX  Int         @db.SmallInt
   positionY  Int         @db.SmallInt
-  width      String      @default("100%") // 改为 String，支持百分比
+  width      String      @default("100%")
+  columns    Int         @default(1)      // 列数字段
   components Component[] // 盒子中的组件
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -51,17 +52,19 @@ model Box {
 }
 
 model Component {
-  id        Int      @id @default(autoincrement())
-  boxId     Int
-  box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
-  type      String   @db.VarChar(50)
-  width     String   @default("100%") // 改为 String，支持百分比
-  height    Int      @default(40)
-  props     Json?    // 组件属性
-  imageId   Int?     @unique
-  image     Image?   @relation(fields: [imageId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  boxId       Int
+  box         Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  type        String   @db.VarChar(50)
+  width       String   @default("100%")
+  height      Int      @default(40)
+  props       Json?    // 组件属性
+  columnIndex Int      @default(0)      // 列索引字段
+  sortOrder   Int      @default(0)      // 排序字段
+  imageId     Int?     @unique
+  image       Image?   @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([boxId])
   @@index([type])

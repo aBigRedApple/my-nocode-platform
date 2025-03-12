@@ -12,54 +12,170 @@ import PropertiesPanel from "@/components/PropertiesPanel";
 import Workspace from "@/components/Workspace";
 import axios from "@/utils/axios";
 
+interface ApiLayoutData {
+  id: number;
+  name: string;
+  description: string;
+  boxes: Array<{
+    id: number;
+    positionX: number;
+    positionY: number;
+    width: string;
+    layout?: {
+      columns: number;
+    };
+    components: Array<{
+      id?: number;
+      type: string;
+      width: string;
+      height: number;
+      props: Record<string, unknown>;
+      column?: number;
+      file?: File;
+    }>;
+  }>;
+}
+
+interface ApiError {
+  message: string;
+  details?: string;
+}
+
+interface SavedBox {
+  id: number;
+  positionX: number;
+  positionY: number;
+  width: string;
+  layout?: {
+    columns: number;
+  };
+  components: Array<{
+    id: number;
+    type: string;
+    width: string;
+    height: number;
+    props: Record<string, unknown>;
+    column?: number;
+  }>;
+}
+
+interface SavedLayout {
+  id: number;
+  name: string;
+  description: string | null;
+  boxes: SavedBox[];
+}
+
 const EditorPage: React.FC = () => {
   const router = useRouter();
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const [boxes, setBoxes] = useState<BoxData[]>([]);
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [layoutName, setLayoutName] = useState<string>("");
   const [layoutDescription, setLayoutDescription] = useState<string | null>(null);
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
-    if (id) {
-      loadProjectData();
-    }
-  }, [id]);
-
-  const loadProjectData = async () => {
-    try {
+    const initPage = async () => {
+      if (!id) return;
+      
       const token = localStorage.getItem("token");
-      const response = await axios.get(`/api/layouts/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const layoutData = response.data;
+      if (!token) {
+        console.error("[Error] Token missing during data load");
+        toast.error("请先登录");
+        router.push("/auth/login");
+        return;
+      }
 
-      const loadedBoxes: BoxData[] = layoutData.boxes.map((box: any) => ({
-        id: box.id,
-        position: { x: box.positionX, y: box.positionY },
-        size: { width: `${box.width}` }, // 确保带单位
-        confirmedComponents: box.components.map((comp: any) => ({
-          id: comp.id,
-          type: comp.type,
-          width: `${comp.width}`, // 确保带单位
-          height: comp.height,
-          props: comp.props || {},
-        })),
-        pendingComponents: [],
-        isConfirmed: true,
-      }));
+      setLoading(true);
+      try {
+        await loadProjectData(id);
+      } catch (error) {
+        console.error("[Error] Failed to load project data:", error);
+        toast.error("加载项目数据失败");
+        router.push("/profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initPage();
+  }, [id, router]);
+
+  const loadProjectData = async (id: string) => {
+    try {
+      console.log("[Debug] Loading project data for ID:", id);
+      const response = await axios.get<ApiLayoutData>(`/api/layouts/${id}`);
+      const layoutData = response.data;
+      console.log("[Debug] API Response:", layoutData);
+
+      if (!layoutData || !Array.isArray(layoutData.boxes)) {
+        console.error("[Error] Invalid layout data format");
+        return;
+      }
+
+      const loadedBoxes = layoutData.boxes
+        .map((box): BoxData | null => {
+          if (!box || typeof box.id === 'undefined') {
+            console.error("[Error] Box is missing ID");
+            return null;
+          }
+
+          const components = (box.components || []).map(comp => {
+            let props = comp.props || {};
+            if (props.src && typeof props.src === 'string' && !props.src.startsWith('http')) {
+              props = {
+                ...props,
+                src: `${window.location.origin}${props.src}`
+              };
+            }
+
+            return {
+              id: comp.id,
+              type: comp.type,
+              width: comp.width,
+              height: comp.height,
+              props: props,
+              column: comp.column,
+              file: comp.file
+            };
+          });
+
+          return {
+            id: box.id,
+            position: { 
+              x: box.positionX, 
+              y: box.positionY 
+            },
+            size: { 
+              width: box.width 
+            },
+            layout: box.layout ? {
+              columns: box.layout.columns
+            } : undefined,
+            confirmedComponents: components,
+            pendingComponents: [],
+            isConfirmed: true,
+          };
+        })
+        .filter((box): box is BoxData => box !== null);
+
+      console.log("[Debug] Processed boxes:", loadedBoxes);
+
+      if (loadedBoxes.length === 0) {
+        console.warn("[Warning] No valid boxes found in layout data");
+      }
 
       setBoxes(loadedBoxes);
       setLayoutName(layoutData.name);
       setLayoutDescription(layoutData.description);
-      setLoading(false);
-    } catch (error: any) {
-      toast.error("加载项目数据失败，请重试");
-      router.push("/profile");
+    } catch (error) {
+      console.error("[Error] Failed to load project data:", error);
+      throw error;
     }
   };
 
@@ -71,6 +187,12 @@ const EditorPage: React.FC = () => {
   const handleSaveConfirm = async (values: { name: string; description: string }) => {
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("请先登录");
+        router.push("/auth/login");
+        return;
+      }
+
       const formData = new FormData();
 
       const projectData = {
@@ -80,17 +202,26 @@ const EditorPage: React.FC = () => {
           id: box.id,
           positionX: box.position.x,
           positionY: box.position.y,
-          width: box.size.width, // 直接传字符串
+          width: box.size.width,
+          layout: {
+            columns: box.layout?.columns || 1
+          },
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
             id: comp.id,
             type: comp.type,
-            width: comp.width, // 直接传字符串
+            width: comp.width,
             height: comp.height,
-            props: { ...comp.props, src: comp.file ? undefined : comp.props.src },
+            props: comp.props ? {
+              ...comp.props,
+              src: comp.file ? undefined : comp.props.src
+            } : {},
+            column: comp.column || 0,
             fileIndex: comp.file ? index : undefined,
           })),
         })),
       };
+
+      console.log("[Debug] Saving project data:", projectData);
 
       boxes.forEach((box) => {
         [...box.confirmedComponents, ...box.pendingComponents].forEach((comp, index) => {
@@ -102,7 +233,7 @@ const EditorPage: React.FC = () => {
 
       formData.append("projectData", JSON.stringify(projectData));
 
-      const response = await axios.put(`/api/layouts/${id}`, formData, {
+      const response = await axios.put<SavedLayout>(`/api/layouts/${id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -111,16 +242,18 @@ const EditorPage: React.FC = () => {
 
       const updatedLayout = response.data;
 
-      const newBoxes: BoxData[] = updatedLayout.boxes.map((box: any) => ({
+      const newBoxes: BoxData[] = updatedLayout.boxes.map((box) => ({
         id: box.id,
         position: { x: box.positionX, y: box.positionY },
-        size: { width: `${box.width}` }, // 确保带单位
-        confirmedComponents: box.components.map((comp: any) => ({
+        size: { width: box.width },
+        layout: box.layout,
+        confirmedComponents: box.components.map((comp) => ({
           id: comp.id,
           type: comp.type,
-          width: `${comp.width}`, // 确保带单位
+          width: comp.width,
           height: comp.height,
           props: comp.props,
+          column: comp.column,
           file: undefined,
         })),
         pendingComponents: [],
@@ -131,9 +264,10 @@ const EditorPage: React.FC = () => {
       toast.success("项目已保存");
       setIsSaveModalVisible(false);
       router.push("/profile");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Save error:", error);
-      toast.error("保存失败，请重试");
+      const apiError = error as ApiError;
+      toast.error(apiError.message || "保存失败，请重试");
     }
   };
 

@@ -13,6 +13,27 @@ interface PropertiesPanelProps {
   ) => void;
 }
 
+interface ComponentProps {
+  [key: string]: unknown;
+  text?: string;
+  content?: string;
+  bgColor?: string;
+  src?: string;
+  label?: string;
+  options?: string[];
+  selected?: string | string[];
+  value?: string;
+  start?: string;
+  end?: string;
+  columns?: number;
+  rows?: number;
+  headers?: string[];
+  data?: string[][];
+  title?: string;
+  backgroundColor?: string;
+  imageSrc?: string;
+}
+
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedBox,
   selectedComponentIndex,
@@ -33,19 +54,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       ? [...selectedBox.confirmedComponents, ...selectedBox.pendingComponents][selectedComponentIndex] || null
       : null;
 
-  const handlePropChange = (key: string, value: any) => {
+  const handlePropChange = (key: keyof ComponentProps, value: string | string[] | number | string[][]) => {
     if (selectedComponent && selectedComponentIndex !== null) {
-      const updatedProps = { ...selectedComponent.props, [key]: value };
+      const updatedProps = { ...selectedComponent.props, [key]: value } as ComponentProps;
       let newHeight = selectedComponent.height;
 
       if (selectedComponent.type === "table" && key === "rows") {
-        newHeight = calculateTableHeight(value);
+        newHeight = calculateTableHeight(value as number);
       }
 
       onUpdateComponent(selectedBox.id, selectedComponentIndex, {
         props: updatedProps,
         height: newHeight,
-        width: selectedComponent.type === "table" ? "100%" : selectedComponent.width, // 表格固定为 100%
+        width: selectedComponent.type === "table" ? "100%" : selectedComponent.width,
       });
     }
   };
@@ -80,7 +101,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     if (file && selectedComponent && selectedComponentIndex !== null) {
       const url = URL.createObjectURL(file);
       onUpdateComponent(selectedBox.id, selectedComponentIndex, {
-        props: { ...selectedComponent.props, src: url },
+        props: { ...selectedComponent.props, src: url } as ComponentProps,
         file,
       });
     }
@@ -90,6 +111,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     const rowHeight = 40;
     const headerHeight = 40;
     return headerHeight + (rows - 1) * rowHeight;
+  };
+
+  const getComponentProps = (component: ComponentInfo): ComponentProps => {
+    return component.props as ComponentProps;
   };
 
   return (
@@ -132,6 +157,24 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               className="w-full border p-1 mt-1 rounded"
             />
           </label>
+          <label className="block mt-2">
+            列数:
+            <select
+              value={selectedBox.layout?.columns || 1}
+              onChange={(e) => {
+                const columns = parseInt(e.target.value);
+                onUpdateBox(selectedBox.id, {
+                  layout: { columns },
+                });
+              }}
+              className="w-full border p-1 mt-1 rounded"
+            >
+              <option value={1}>单列</option>
+              <option value={2}>两列</option>
+              <option value={3}>三列</option>
+              <option value={4}>四列</option>
+            </select>
+          </label>
         </div>
 
         {selectedComponent && (
@@ -154,7 +197,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   })
                 }
                 className="w-full border p-1 mt-1 rounded"
-                disabled={selectedComponent.type === "table"} // 表格宽度固定为 100%
+                disabled={selectedComponent.type === "table"}
               />
             </label>
             <label className="block mt-2">
@@ -171,6 +214,26 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 className="w-full border p-1 mt-1 rounded"
               />
             </label>
+            {selectedBox.layout?.columns && selectedBox.layout.columns > 1 && (
+              <label className="block mt-2">
+                列位置:
+                <select
+                  value={selectedComponent.column || 0}
+                  onChange={(e) =>
+                    onUpdateComponent(selectedBox.id, selectedComponentIndex!, {
+                      column: parseInt(e.target.value),
+                    })
+                  }
+                  className="w-full border p-1 mt-1 rounded"
+                >
+                  {Array.from({ length: selectedBox.layout.columns }, (_, i) => (
+                    <option key={i} value={i}>
+                      第 {i + 1} 列
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             {selectedComponent.type === "button" && (
               <>
@@ -178,7 +241,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   文本:
                   <input
                     type="text"
-                    value={selectedComponent.props?.text || selectedComponent.props?.content || ""}
+                    value={getComponentProps(selectedComponent).text || getComponentProps(selectedComponent).content || ""}
                     onChange={(e) => handlePropChange("text", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -187,7 +250,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   背景色:
                   <input
                     type="color"
-                    value={selectedComponent.props?.bgColor || "#3b82f6"}
+                    value={getComponentProps(selectedComponent).bgColor || "#3b82f6"}
                     onChange={(e) => handlePropChange("bgColor", e.target.value)}
                     className="w-full mt-1"
                   />
@@ -198,7 +261,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <label className="block mt-2">
                 内容:
                 <textarea
-                  value={selectedComponent.props?.content ?? ""}
+                  value={getComponentProps(selectedComponent).content || ""}
                   onChange={(e) => handlePropChange("content", e.target.value)}
                   className="w-full border p-1 mt-1 rounded h-20"
                 />
@@ -210,7 +273,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   标签:
                   <input
                     type="text"
-                    value={selectedComponent.props?.label ?? ""}
+                    value={getComponentProps(selectedComponent).label || ""}
                     onChange={(e) => handlePropChange("label", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -219,7 +282,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   选项 (用空格分隔):
                   <input
                     type="text"
-                    value={selectedComponent.props?.options?.join(" ") ?? ""}
+                    value={getComponentProps(selectedComponent).options?.join(" ") || ""}
                     onChange={(e) => handlePropChange("options", e.target.value.split(" "))}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -228,7 +291,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   选中项:
                   <input
                     type="text"
-                    value={selectedComponent.props?.selected ?? ""}
+                    value={getComponentProps(selectedComponent).selected || ""}
                     onChange={(e) => handlePropChange("selected", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -241,7 +304,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   标签:
                   <input
                     type="text"
-                    value={selectedComponent.props?.label ?? ""}
+                    value={getComponentProps(selectedComponent).label || ""}
                     onChange={(e) => handlePropChange("label", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -250,7 +313,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   选项 (用空格分隔):
                   <input
                     type="text"
-                    value={selectedComponent.props?.options?.join(" ") ?? ""}
+                    value={getComponentProps(selectedComponent).options?.join(" ") || ""}
                     onChange={(e) => handlePropChange("options", e.target.value.split(" "))}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -259,7 +322,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   选中项 (用空格分隔):
                   <input
                     type="text"
-                    value={selectedComponent.props?.selected?.join(" ") ?? ""}
+                    value={
+                      Array.isArray(getComponentProps(selectedComponent).selected)
+                        ? (getComponentProps(selectedComponent).selected as string[]).join(" ")
+                        : ""
+                    }
                     onChange={(e) => handlePropChange("selected", e.target.value.split(" "))}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -277,9 +344,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     className="w-full mt-1"
                   />
                 </label>
-                {selectedComponent.props?.src && (
+                {getComponentProps(selectedComponent).src && (
                   <img
-                    src={selectedComponent.props.src}
+                    src={getComponentProps(selectedComponent).src}
                     alt="Preview"
                     className="mt-2 max-w-full rounded border border-gray-300"
                   />
@@ -291,7 +358,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 日期:
                 <input
                   type="date"
-                  value={selectedComponent.props?.value ?? ""}
+                  value={getComponentProps(selectedComponent).value || ""}
                   onChange={(e) => handlePropChange("value", e.target.value)}
                   className="w-full border p-1 mt-1 rounded"
                 />
@@ -303,7 +370,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   开始日期:
                   <input
                     type="date"
-                    value={selectedComponent.props?.start ?? ""}
+                    value={getComponentProps(selectedComponent).start || ""}
                     onChange={(e) => handlePropChange("start", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -312,7 +379,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   结束日期:
                   <input
                     type="date"
-                    value={selectedComponent.props?.end ?? ""}
+                    value={getComponentProps(selectedComponent).end || ""}
                     onChange={(e) => handlePropChange("end", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -326,7 +393,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <input
                     type="number"
                     min="1"
-                    value={selectedComponent.props?.columns ?? 2}
+                    value={getComponentProps(selectedComponent).columns || 2}
                     onChange={(e) => handlePropChange("columns", Number(e.target.value))}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -336,7 +403,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <input
                     type="number"
                     min="1"
-                    value={selectedComponent.props?.rows ?? 2}
+                    value={getComponentProps(selectedComponent).rows || 2}
                     onChange={(e) => handlePropChange("rows", Number(e.target.value))}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -345,7 +412,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   表头 (用空格分隔):
                   <input
                     type="text"
-                    value={selectedComponent.props?.headers?.join(" ") ?? "表头1 表头2"}
+                    value={getComponentProps(selectedComponent).headers?.join(" ") || "表头1 表头2"}
                     onChange={(e) => handlePropChange("headers", e.target.value.split(/\s+/))}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -354,12 +421,15 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   内容 (每列用空格分隔，每行用换行符分隔):
                   <textarea
                     value={
-                      selectedComponent.props?.data
-                        ?.map((row: string[]) => row.join(" "))
-                        .join("\n") ?? "数据1 数据2\n数据3 数据4"
+                      getComponentProps(selectedComponent).data
+                        ?.map((row) => row.join(" "))
+                        .join("\n") || "数据1 数据2\n数据3 数据4"
                     }
                     onChange={(e) =>
-                      handlePropChange("data", e.target.value.split("\n").map((row) => row.split(" ")))
+                      handlePropChange(
+                        "data",
+                        e.target.value.split("\n").map((row) => row.split(" "))
+                      )
                     }
                     className="w-full border p-1 mt-1 rounded h-20"
                     placeholder="数据1 数据2\n数据3 数据4"
@@ -373,7 +443,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   标题:
                   <input
                     type="text"
-                    value={selectedComponent.props?.title ?? ""}
+                    value={getComponentProps(selectedComponent).title || ""}
                     onChange={(e) => handlePropChange("title", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -381,7 +451,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 <label className="block mt-2">
                   内容:
                   <textarea
-                    value={selectedComponent.props?.content ?? ""}
+                    value={getComponentProps(selectedComponent).content || ""}
                     onChange={(e) => handlePropChange("content", e.target.value)}
                     className="w-full border p-1 mt-1 rounded h-20"
                   />
@@ -390,7 +460,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   背景色:
                   <input
                     type="color"
-                    value={selectedComponent.props?.backgroundColor || "#ffffff"}
+                    value={getComponentProps(selectedComponent).backgroundColor || "#ffffff"}
                     onChange={(e) => handlePropChange("backgroundColor", e.target.value)}
                     className="w-full mt-1"
                   />
@@ -406,7 +476,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         if (file) {
                           const url = URL.createObjectURL(file);
                           onUpdateComponent(selectedBox.id, selectedComponentIndex!, {
-                            props: { ...selectedComponent.props, imageSrc: url },
+                            props: { ...getComponentProps(selectedComponent), imageSrc: url },
                             file,
                           });
                         }
@@ -414,9 +484,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       className="w-full mt-1"
                     />
                   </label>
-                  {selectedComponent.props?.imageSrc && (
+                  {getComponentProps(selectedComponent).imageSrc && (
                     <img
-                      src={selectedComponent.props.imageSrc}
+                      src={getComponentProps(selectedComponent).imageSrc}
                       alt="Preview"
                       className="mt-2 max-w-full rounded border border-gray-300"
                     />

@@ -4,7 +4,7 @@ import { ProjectOutlined, AppstoreOutlined, DeleteOutlined } from "@ant-design/i
 import ProjectItem from "./ProjectItem";
 import axios from "@/utils/axios";
 import { toast } from "react-toastify";
-import { NextRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 interface Project {
   id: number;
@@ -26,7 +26,7 @@ interface Props {
   loading: boolean;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
-  router: NextRouter;
+  router: ReturnType<typeof useRouter>;
 }
 
 const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router }) => {
@@ -134,6 +134,32 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router 
     setTemplateToDelete(null);
   };
 
+  const handleEdit = async (projectId: number) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("请先登录");
+        router.push("/auth/login");
+        return;
+      }
+
+      // 验证项目是否存在
+      const response = await axios.get(`/api/layouts/${projectId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 200) {
+        console.log("正在跳转到编辑页面:", `/editor/${projectId}`);
+        router.replace(`/editor/${projectId}`);
+      } else {
+        toast.error("无法访问该项目");
+      }
+    } catch (error) {
+      console.error("编辑项目时出错:", error);
+      toast.error("无法编辑该项目，请重试");
+    }
+  };
+
   return (
     <div className="flex-1 p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300">
       <Tabs
@@ -167,7 +193,7 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router 
                         <ProjectItem
                           key={project.id}
                           project={project}
-                          onEdit={() => router.push(`/editor/${project.id}`)}
+                          onEdit={() => handleEdit(project.id)}
                           onDelete={() => showDeleteConfirm(project.id)}
                         />
                       ))}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import ComponentLibrary from "../../components/ComponentLibrary";
@@ -14,6 +14,8 @@ const WorkspacePage: React.FC = () => {
   const [selectedBoxId, setSelectedBoxId] = useState<number | null>(null);
   const [selectedComponentIndex, setSelectedComponentIndex] = useState<number | null>(null);
   const router = useRouter();
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [nextId, setNextId] = useState(1);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -51,6 +53,28 @@ const WorkspacePage: React.FC = () => {
     );
   };
 
+  const handleWorkspaceClick = (e: React.MouseEvent) => {
+    const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+    if (!workspaceRect) return;
+
+    // 计算最后一个盒子的底部位置
+    const lastBoxBottom = boxes.reduce((maxY, box) => Math.max(maxY, box.position.y), 0);
+
+    const newBox: BoxData = {
+      id: nextId,
+      position: { x: 0, y: lastBoxBottom + 20 }, // 在最后一个盒子下方 20px 处添加新盒子
+      size: { width: "100%" },
+      confirmedComponents: [],
+      pendingComponents: [],
+      isConfirmed: false,
+    };
+    const newBoxes = [...boxes, newBox];
+    setNextId(nextId + 1);
+    saveHistory(newBoxes);
+    setBoxes(newBoxes);
+    setSelectedBoxId(newBox.id);
+  };
+
   return (
     <div className="flex h-full bg-gray-100 pt-16">
       <DndProvider backend={HTML5Backend}>
@@ -65,6 +89,8 @@ const WorkspacePage: React.FC = () => {
             setSelectedComponentIndex(index);
           }}
           isSave={true}
+          ref={workspaceRef}
+          onClick={handleWorkspaceClick}
         />
         <PropertiesPanel
           selectedBox={boxes.find((box) => box.id === selectedBoxId) || null}

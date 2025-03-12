@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, Fragment } from "react";
+import { useRouter } from "next/navigation";
 import Box, { BoxData, ComponentInfo, COMPONENT_DEFAULT_HEIGHTS } from "./Box";
 import { FaUndo, FaRedo, FaSave } from "react-icons/fa";
 import axios from "../utils/axios";
@@ -38,6 +39,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
   onUpdateBox: externalUpdateBox,
   onUpdateComponent: externalUpdateComponent,
 }) => {
+  const router = useRouter();
   const [nextId, setNextId] = useState(1);
   const [history, setHistory] = useState<BoxData[][]>([boxes]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -173,6 +175,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
       setProjectName("");
       setProjectDesc("");
       alert(`项目 "${projectName}" 保存成功！工作区已清空。`);
+      router.push("/profile");
     } catch (error) {
       console.error("Save error:", error);
       alert("保存失败，请重试！");

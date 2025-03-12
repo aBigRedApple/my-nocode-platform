@@ -15,12 +15,16 @@ interface ProjectData {
       positionY: number;
       width: string;
       height: number;
+      layout?: {
+        columns: number;
+      };
       components: {
         id?: number;
         type: string;
         width: string;
         height: number;
         props: Record<string, unknown>;
+        column?: number;
         fileIndex?: number;
       }[];
     }[];
@@ -76,7 +80,10 @@ export async function POST(req: NextRequest) {
       data: { userId: decodedUserId, name, description },
     });
 
-    const baseUrl = "http://localhost:3000";
+    // 获取请求的 host
+    const host = req.headers.get("host") || "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
 
     // 按顺序处理 boxes，避免 Promise.all 打乱顺序
     const savedBoxes = [];
@@ -87,11 +94,12 @@ export async function POST(req: NextRequest) {
           positionX: box.positionX,
           positionY: box.positionY,
           width: box.width,
+          columns: box.layout?.columns || 1,
         },
       });
 
       const savedComponents = await Promise.all(
-        box.components.map(async (comp) => {
+        box.components.map(async (comp, index) => {
           let imageId: number | undefined;
           let imageUrl: string | undefined;
 
@@ -121,6 +129,8 @@ export async function POST(req: NextRequest) {
               height: comp.height,
               props: updatedProps,
               imageId,
+              columnIndex: comp.column || 0,
+              sortOrder: index,
             },
           });
 
@@ -131,6 +141,7 @@ export async function POST(req: NextRequest) {
             height: component.height,
             props: updatedProps,
             imageId: component.imageId,
+            column: comp.column,
           };
         })
       );
