@@ -33,85 +33,39 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       ? [...selectedBox.confirmedComponents, ...selectedBox.pendingComponents][selectedComponentIndex] || null
       : null;
 
-  const calculateMinSize = (box: BoxData) => {
-    const allComponents = [...box.confirmedComponents, ...box.pendingComponents];
-    const minWidth = Math.max(...allComponents.map((comp) => comp.width || 135), 135);
-    const minHeight =
-      allComponents.reduce(
-        (sum, comp) => sum + (comp.height || COMPONENT_DEFAULT_HEIGHTS[comp.type] || 60) + 16,
-        0
-      ) -
-      16 +
-      32;
-    return { minWidth, minHeight };
-  };
-
-  const calculateTableHeight = (rows: number) => {
-    const rowHeight = 40;
-    const headerHeight = 40;
-    return headerHeight + (rows - 1) * rowHeight;
-  };
-
-  const calculateTableWidth = (columns: number) => {
-    const columnWidth = 50;
-    return Math.max(columns * columnWidth, 100);
-  };
-
   const handlePropChange = (key: string, value: any) => {
     if (selectedComponent && selectedComponentIndex !== null) {
       const updatedProps = { ...selectedComponent.props, [key]: value };
       let newHeight = selectedComponent.height;
-      let newWidth = selectedComponent.width;
 
-      if (selectedComponent.type === "table") {
-        if (key === "rows") newHeight = calculateTableHeight(value);
-        if (key === "columns") newWidth = calculateTableWidth(value);
+      if (selectedComponent.type === "table" && key === "rows") {
+        newHeight = calculateTableHeight(value);
       }
 
       onUpdateComponent(selectedBox.id, selectedComponentIndex, {
         props: updatedProps,
         height: newHeight,
-        width: newWidth,
+        width: selectedComponent.type === "table" ? "100%" : selectedComponent.width, // 表格固定为 100%
       });
     }
   };
 
-  const handleSizeChange = (key: "width" | "height", value: number) => {
-    const { minWidth, minHeight } = calculateMinSize(selectedBox);
-    const newValue = key === "width" ? Math.max(value, 135) : value;
-    const newSize = { ...selectedBox.size, [key]: newValue };
-
-    if (newSize.width < minWidth || newSize.height < minHeight) {
-      const confirmShrink = window.confirm(
-        `盒子${key === "width" ? "宽度" : "高度"}将小于组件需求（最小${key === "width" ? minWidth : minHeight}px），还要继续缩小吗？再次缩小将删除最后一个组件。`
-      );
-      if (confirmShrink) {
-        const allComponents = [...selectedBox.confirmedComponents, ...selectedBox.pendingComponents];
-        if (allComponents.length > 0) {
-          const newBoxes = {
-            ...selectedBox,
-            pendingComponents: allComponents.slice(0, -1),
-            confirmedComponents: [],
-            size: newSize,
-          };
-          onUpdateBox(selectedBox.id, newBoxes);
-        }
-      }
-    } else {
-      onUpdateBox(selectedBox.id, { size: newSize });
-    }
+  const handleSizeChange = (key: "width", value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    const newSize = { width: `${numericValue}%` };
+    onUpdateBox(selectedBox.id, { size: newSize });
   };
 
   const handleDeleteComponent = () => {
     if (selectedComponent && selectedComponentIndex !== null) {
       const allComponents = [...selectedBox.confirmedComponents, ...selectedBox.pendingComponents];
       allComponents.splice(selectedComponentIndex, 1);
-      const newBoxes = {
+      const newBox = {
         ...selectedBox,
         confirmedComponents: allComponents.slice(0, selectedBox.confirmedComponents.length),
         pendingComponents: allComponents.slice(selectedBox.confirmedComponents.length),
       };
-      onUpdateBox(selectedBox.id, newBoxes);
+      onUpdateBox(selectedBox.id, newBox);
     }
   };
 
@@ -130,6 +84,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         file,
       });
     }
+  };
+
+  const calculateTableHeight = (rows: number) => {
+    const rowHeight = 40;
+    const headerHeight = 40;
+    return headerHeight + (rows - 1) * rowHeight;
   };
 
   return (
@@ -158,46 +118,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <div className="mb-4">
           <h4 className="font-semibold text-gray-700">盒子属性</h4>
           <label className="block mt-2">
-            X 坐标:
+            宽度 (%):
             <input
               type="number"
               min="0"
-              value={selectedBox.position.x}
-              onChange={(e) =>
-                onUpdateBox(selectedBox.id, { position: { ...selectedBox.position, x: Number(e.target.value) } })
+              max="100"
+              value={
+                typeof selectedBox.size.width === "string"
+                  ? parseFloat(selectedBox.size.width) || 100
+                  : selectedBox.size.width
               }
-              className="w-full border p-1 mt-1 rounded"
-            />
-          </label>
-          <label className="block mt-2">
-            Y 坐标:
-            <input
-              type="number"
-              min="0"
-              value={selectedBox.position.y}
-              onChange={(e) =>
-                onUpdateBox(selectedBox.id, { position: { ...selectedBox.position, y: Number(e.target.value) } })
-              }
-              className="w-full border p-1 mt-1 rounded"
-            />
-          </label>
-          <label className="block mt-2">
-            宽度:
-            <input
-              type="number"
-              min="135"
-              value={selectedBox.size.width}
-              onChange={(e) => handleSizeChange("width", Number(e.target.value))}
-              className="w-full border p-1 mt-1 rounded"
-            />
-          </label>
-          <label className="block mt-2">
-            高度:
-            <input
-              type="number"
-              min="0"
-              value={selectedBox.size.height}
-              onChange={(e) => handleSizeChange("height", Number(e.target.value))}
+              onChange={(e) => handleSizeChange("width", e.target.value)}
               className="w-full border p-1 mt-1 rounded"
             />
           </label>
@@ -207,25 +138,31 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <div>
             <h4 className="font-semibold text-gray-700">组件属性</h4>
             <label className="block mt-2">
-              宽度:
+              宽度 (%):
               <input
                 type="number"
-                min="50"
-                value={selectedComponent.width}
+                min="10"
+                max="100"
+                value={
+                  typeof selectedComponent.width === "string"
+                    ? parseFloat(selectedComponent.width) || 100
+                    : selectedComponent.width
+                }
                 onChange={(e) =>
                   onUpdateComponent(selectedBox.id, selectedComponentIndex!, {
-                    width: Number(e.target.value),
+                    width: `${e.target.value}%`,
                   })
                 }
                 className="w-full border p-1 mt-1 rounded"
+                disabled={selectedComponent.type === "table"} // 表格宽度固定为 100%
               />
             </label>
             <label className="block mt-2">
-              高度:
+              高度 (px):
               <input
                 type="number"
                 min="20"
-                value={selectedComponent.height}
+                value={selectedComponent.height || COMPONENT_DEFAULT_HEIGHTS[selectedComponent.type] || 40}
                 onChange={(e) =>
                   onUpdateComponent(selectedBox.id, selectedComponentIndex!, {
                     height: Number(e.target.value),
@@ -234,13 +171,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 className="w-full border p-1 mt-1 rounded"
               />
             </label>
+
             {selectedComponent.type === "button" && (
               <>
                 <label className="block mt-2">
                   文本:
                   <input
                     type="text"
-                    value={selectedComponent.props?.text ?? ""}
+                    value={selectedComponent.props?.text || selectedComponent.props?.content || ""}
                     onChange={(e) => handlePropChange("text", e.target.value)}
                     className="w-full border p-1 mt-1 rounded"
                   />
@@ -258,36 +196,75 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             )}
             {selectedComponent.type === "text" && (
               <label className="block mt-2">
-                Placeholder:
-                <input
-                  type="text"
-                  value={selectedComponent.props?.placeholder ?? ""}
-                  onChange={(e) => handlePropChange("placeholder", e.target.value)}
-                  className="w-full border p-1 mt-1 rounded"
+                内容:
+                <textarea
+                  value={selectedComponent.props?.content ?? ""}
+                  onChange={(e) => handlePropChange("content", e.target.value)}
+                  className="w-full border p-1 mt-1 rounded h-20"
                 />
               </label>
             )}
             {selectedComponent.type === "radio" && (
-              <label className="block mt-2">
-                标签:
-                <input
-                  type="text"
-                  value={selectedComponent.props?.label ?? ""}
-                  onChange={(e) => handlePropChange("label", e.target.value)}
-                  className="w-full border p-1 mt-1 rounded"
-                />
-              </label>
+              <>
+                <label className="block mt-2">
+                  标签:
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.label ?? ""}
+                    onChange={(e) => handlePropChange("label", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  选项 (用空格分隔):
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.options?.join(" ") ?? ""}
+                    onChange={(e) => handlePropChange("options", e.target.value.split(" "))}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  选中项:
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.selected ?? ""}
+                    onChange={(e) => handlePropChange("selected", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+              </>
             )}
             {selectedComponent.type === "checkbox" && (
-              <label className="block mt-2">
-                标签:
-                <input
-                  type="text"
-                  value={selectedComponent.props?.label ?? ""}
-                  onChange={(e) => handlePropChange("label", e.target.value)}
-                  className="w-full border p-1 mt-1 rounded"
-                />
-              </label>
+              <>
+                <label className="block mt-2">
+                  标签:
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.label ?? ""}
+                    onChange={(e) => handlePropChange("label", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  选项 (用空格分隔):
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.options?.join(" ") ?? ""}
+                    onChange={(e) => handlePropChange("options", e.target.value.split(" "))}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  选中项 (用空格分隔):
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.selected?.join(" ") ?? ""}
+                    onChange={(e) => handlePropChange("selected", e.target.value.split(" "))}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+              </>
             )}
             {selectedComponent.type === "image" && (
               <div className="mt-2">
@@ -308,6 +285,39 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   />
                 )}
               </div>
+            )}
+            {selectedComponent.type === "date" && (
+              <label className="block mt-2">
+                日期:
+                <input
+                  type="date"
+                  value={selectedComponent.props?.value ?? ""}
+                  onChange={(e) => handlePropChange("value", e.target.value)}
+                  className="w-full border p-1 mt-1 rounded"
+                />
+              </label>
+            )}
+            {selectedComponent.type === "dateRange" && (
+              <>
+                <label className="block mt-2">
+                  开始日期:
+                  <input
+                    type="date"
+                    value={selectedComponent.props?.start ?? ""}
+                    onChange={(e) => handlePropChange("start", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  结束日期:
+                  <input
+                    type="date"
+                    value={selectedComponent.props?.end ?? ""}
+                    onChange={(e) => handlePropChange("end", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+              </>
             )}
             {selectedComponent.type === "table" && (
               <>
@@ -349,15 +359,69 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         .join("\n") ?? "数据1 数据2\n数据3 数据4"
                     }
                     onChange={(e) =>
-                      handlePropChange(
-                        "data",
-                        e.target.value.split("\n").map((row) => row.split(" "))
-                      )
+                      handlePropChange("data", e.target.value.split("\n").map((row) => row.split(" ")))
                     }
                     className="w-full border p-1 mt-1 rounded h-20"
                     placeholder="数据1 数据2\n数据3 数据4"
                   />
                 </label>
+              </>
+            )}
+            {selectedComponent.type === "card" && (
+              <>
+                <label className="block mt-2">
+                  标题:
+                  <input
+                    type="text"
+                    value={selectedComponent.props?.title ?? ""}
+                    onChange={(e) => handlePropChange("title", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  内容:
+                  <textarea
+                    value={selectedComponent.props?.content ?? ""}
+                    onChange={(e) => handlePropChange("content", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded h-20"
+                  />
+                </label>
+                <label className="block mt-2">
+                  背景色:
+                  <input
+                    type="color"
+                    value={selectedComponent.props?.backgroundColor || "#ffffff"}
+                    onChange={(e) => handlePropChange("backgroundColor", e.target.value)}
+                    className="w-full mt-1"
+                  />
+                </label>
+                <div className="mt-2">
+                  <label className="block">
+                    上传图片:
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const url = URL.createObjectURL(file);
+                          onUpdateComponent(selectedBox.id, selectedComponentIndex!, {
+                            props: { ...selectedComponent.props, imageSrc: url },
+                            file,
+                          });
+                        }
+                      }}
+                      className="w-full mt-1"
+                    />
+                  </label>
+                  {selectedComponent.props?.imageSrc && (
+                    <img
+                      src={selectedComponent.props.imageSrc}
+                      alt="Preview"
+                      className="mt-2 max-w-full rounded border border-gray-300"
+                    />
+                  )}
+                </div>
               </>
             )}
           </div>

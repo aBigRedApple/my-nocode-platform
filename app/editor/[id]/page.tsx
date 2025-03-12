@@ -41,11 +41,11 @@ const EditorPage: React.FC = () => {
       const loadedBoxes: BoxData[] = layoutData.boxes.map((box: any) => ({
         id: box.id,
         position: { x: box.positionX, y: box.positionY },
-        size: { width: box.width, height: box.height },
+        size: { width: `${box.width}` }, // 确保带单位
         confirmedComponents: box.components.map((comp: any) => ({
           id: comp.id,
           type: comp.type,
-          width: comp.width,
+          width: `${comp.width}`, // 确保带单位
           height: comp.height,
           props: comp.props || {},
         })),
@@ -80,17 +80,13 @@ const EditorPage: React.FC = () => {
           id: box.id,
           positionX: box.position.x,
           positionY: box.position.y,
-          width: box.size.width,
-          height: box.size.height,
+          width: box.size.width, // 直接传字符串
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
             id: comp.id,
             type: comp.type,
-            width: comp.width,
+            width: comp.width, // 直接传字符串
             height: comp.height,
-            props: {
-              ...comp.props,
-              src: comp.file ? undefined : comp.props.src, // 如果有 file，清空 src，依赖后端生成
-            },
+            props: { ...comp.props, src: comp.file ? undefined : comp.props.src },
             fileIndex: comp.file ? index : undefined,
           })),
         })),
@@ -115,18 +111,17 @@ const EditorPage: React.FC = () => {
 
       const updatedLayout = response.data;
 
-      // 更新 boxes 状态
       const newBoxes: BoxData[] = updatedLayout.boxes.map((box: any) => ({
         id: box.id,
         position: { x: box.positionX, y: box.positionY },
-        size: { width: box.width, height: box.height },
+        size: { width: `${box.width}` }, // 确保带单位
         confirmedComponents: box.components.map((comp: any) => ({
           id: comp.id,
           type: comp.type,
-          width: comp.width,
+          width: `${comp.width}`, // 确保带单位
           height: comp.height,
-          props: comp.props, // 使用后端返回的 props
-          file: undefined, // 清除 file
+          props: comp.props,
+          file: undefined,
         })),
         pendingComponents: [],
         isConfirmed: true,

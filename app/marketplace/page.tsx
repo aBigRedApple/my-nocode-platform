@@ -225,7 +225,7 @@ const MarketPlace = () => {
       </div>
 
       {totalTemplates > pageSize && (
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center ">
           <Pagination
             current={currentPage}
             total={totalTemplates}
@@ -252,16 +252,16 @@ const MarketPlace = () => {
             使用此模板
           </Button>,
         ]}
-        width={500}
-        styles={{ body: { maxHeight: '68vh', overflowY: 'auto' } }}
+        width={750}
+        styles={{ body: { maxHeight: '80vh', overflowY: 'auto' } }}
       >
         {selectedTemplate && (
           <div>
             <Image
               src={selectedTemplate.thumbnail || "/placeholder.png"}
               alt={selectedTemplate.name}
-              width={450}
-              height={260}
+              width={750}
+              height={500}
               className="mb-4 object-contain"
             />
             <p>{selectedTemplate.description || "暂无描述"}</p>

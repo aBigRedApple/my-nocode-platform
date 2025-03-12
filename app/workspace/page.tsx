@@ -15,37 +15,13 @@ const WorkspacePage: React.FC = () => {
   const [selectedComponentIndex, setSelectedComponentIndex] = useState<number | null>(null);
   const router = useRouter();
 
-  // 加载已有布局（示例：加载最新布局，可选）
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/auth/login");
       return;
     }
-    const loadLayout = async () => {
-      try {
-        const response = await axios.get<{ boxes: any[] }>("/api/project/load");
-        const loadedBoxes: BoxData[] = response.data.boxes.map((box) => ({
-          id: box.id,
-          position: { x: box.positionX, y: box.positionY },
-          size: { width: box.width, height: box.height },
-          confirmedComponents: box.components.map((comp: any) => ({
-            id: comp.id,
-            type: comp.type,
-            width: comp.width,
-            height: comp.height,
-            props: comp.props || {},
-          })),
-          pendingComponents: [],
-          isConfirmed: true,
-        }));
-        setBoxes(loadedBoxes);
-      } catch (error) {
-        console.error("Load layout error:", error);
-      }
-    };
-    // loadLayout(); // 可通过按钮触发，这里注释掉，因为是新建项目
-  }, []);
+  }, [router]);
 
   const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData> | null) => {
     if (updatedBox === null) {
@@ -88,7 +64,7 @@ const WorkspacePage: React.FC = () => {
             setSelectedBoxId(boxId);
             setSelectedComponentIndex(index);
           }}
-          isSave={true} // 显式传入 isSave=true，确保显示保存按钮
+          isSave={true}
         />
         <PropertiesPanel
           selectedBox={boxes.find((box) => box.id === selectedBoxId) || null}

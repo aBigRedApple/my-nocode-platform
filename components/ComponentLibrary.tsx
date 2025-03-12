@@ -16,12 +16,13 @@ const components: ComponentItem[] = [
   { type: "date", label: "日期" },
   { type: "dateRange", label: "日期区间" },
   { type: "table", label: "表格" },
+  { type: "card", label: "卡片" },
 ];
 
 export interface ComponentPreviewProps {
   type: string;
   props?: Record<string, any>;
-  width: number;
+  width: string | number;
   height: number;
 }
 
@@ -31,61 +32,109 @@ export const ComponentPreviewWithProps: React.FC<ComponentPreviewProps> = ({
   width,
   height,
 }) => {
+  const resolvedWidth = typeof width === "string" ? width : `${width}px`;
+  console.log("渲染组件预览:", { type, props, width, height });
+
   switch (type) {
     case "button":
       return (
         <button
           className="bg-blue-500 text-white px-3 py-1 rounded"
-          style={{ width, height, backgroundColor: props.bgColor || "#3b82f6" }}
+          style={{ width: resolvedWidth, height, backgroundColor: props.bgColor || "#3b82f6", ...props.style }}
         >
-          {props.text || "按钮"}
+          {props.text || props.content || "按钮"}
         </button>
       );
     case "text":
       return (
-        <input
-          type="text"
-          placeholder={props.placeholder || "文本"}
-          className="border p-1 rounded w-full text-sm"
-          style={{ width, height }}
-        />
+        <div
+          className="text-sm whitespace-pre-wrap"
+          style={{ width: resolvedWidth, height, ...props.style }}
+        >
+          {props.content || "文本"}
+        </div>
       );
     case "radio":
       return (
-        <div className="flex items-center" style={{ width, height }}>
-          <input type="radio" id="radio" name="radio" className="mr-1" />
-          <label htmlFor="radio" className="text-sm">{props.label || "单选"}</label>
+        <div className="flex flex-col" style={{ width: resolvedWidth, height, ...props.style }}>
+          <span className="text-sm mb-1">{props.label || "单选"}</span>
+          {(props.options || ["选项1"]).map((option: string, index: number) => (
+            <label key={index} className="flex items-center text-sm">
+              <input
+                type="radio"
+                name={props.label || "radio"}
+                value={option}
+                checked={props.selected === option}
+                className="mr-1"
+                readOnly
+              />
+              {option}
+            </label>
+          ))}
         </div>
       );
     case "checkbox":
       return (
-        <div className="flex items-center" style={{ width, height }}>
-          <input type="checkbox" id="checkbox" className="mr-1" />
-          <label htmlFor="checkbox" className="text-sm">{props.label || "多选"}</label>
+        <div className="flex flex-col" style={{ width: resolvedWidth, height, ...props.style }}>
+          <span className="text-sm mb-1">{props.label || "多选"}</span>
+          {(props.options || ["选项1"]).map((option: string, index: number) => (
+            <label key={index} className="flex items-center text-sm">
+              <input
+                type="checkbox"
+                value={option}
+                checked={(props.selected || []).includes(option)}
+                className="mr-1"
+                readOnly
+              />
+              {option}
+            </label>
+          ))}
         </div>
       );
     case "image":
-      return (
+      return props.src ? (
+        <img
+          src={props.src}
+          alt="Component"
+          className="object-cover"
+          style={{ width: resolvedWidth, height, ...props.style }}
+          onError={(e) => console.error("图片加载失败:", props.src)}
+        />
+      ) : (
         <div
           className="flex items-center justify-center text-sm"
-          style={{
-            width,
-            height,
-            backgroundImage: props.src ? `url(${props.src})` : "none",
-            backgroundSize: "cover",
-            backgroundColor: props.src ? "transparent" : "#e5e7eb",
-          }}
+          style={{ width: resolvedWidth, height, backgroundColor: "#e5e7eb", ...props.style }}
         >
-          {!props.src && "图片"}
+          图片
         </div>
       );
     case "date":
-      return <input type="date" className="border p-1 rounded text-sm" style={{ width, height }} />;
+      return (
+        <input
+          type="date"
+          value={props.value || ""}
+          className="border p-1 rounded text-sm"
+          style={{ width: resolvedWidth, height, ...props.style }}
+          readOnly
+        />
+      );
     case "dateRange":
       return (
-        <div className="flex space-x-1" style={{ width, height }}>
-          <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} />
-          <input type="date" className="border p-1 rounded text-sm" style={{ width: width / 2 - 4 }} />
+        <div className="flex space-x-2" style={{ width: resolvedWidth, height, ...props.style }}>
+          <input
+            type="date"
+            value={props.start || ""}
+            className="border p-1 rounded text-sm"
+            style={{ width: `calc(${resolvedWidth} / 2 - 8px)` }}
+            readOnly
+          />
+          <input
+            type="date"
+            value={props.end || ""}
+            className="border p-1 rounded text-sm"
+            style={{ width: `calc(${resolvedWidth} / 2 - 8px)` }}
+            readOnly
+          />
         </div>
       );
     case "table":
@@ -94,7 +143,7 @@ export const ComponentPreviewWithProps: React.FC<ComponentPreviewProps> = ({
       const headers = props.headers || ["表头1", "表头2"];
       const data = props.data || [["数据1", "数据2"], ["数据3", "数据4"]];
       return (
-        <table className="border-collapse border text-sm" style={{ width, height }}>
+        <table className="border-collapse border text-sm" style={{ width: resolvedWidth, height, ...props.style }}>
           <thead>
             <tr>
               {Array.from({ length: columns }).map((_, colIndex) => (
@@ -117,8 +166,28 @@ export const ComponentPreviewWithProps: React.FC<ComponentPreviewProps> = ({
           </tbody>
         </table>
       );
+    case "card":
+      return (
+        <div
+          className="flex flex-col items-center"
+          style={{ width: resolvedWidth, height, backgroundColor: props.backgroundColor || "#fff", ...props.style }}
+        >
+          {props.imageSrc && (
+            <img
+              src={props.imageSrc}
+              alt={props.title || "Card"}
+              className="object-cover"
+              style={{ width: "100%", height: "50%", borderRadius: "8px 8px 0 0" }}
+            />
+          )}
+          <div className="p-4 text-center" style={{ height: props.imageSrc ? "50%" : "100%" }}>
+            <h3 className="font-semibold text-lg">{props.title || "标题"}</h3>
+            <p className="text-sm text-gray-600">{props.content || "内容"}</p>
+          </div>
+        </div>
+      );
     default:
-      return <div style={{ width, height }}>{type}</div>;
+      return <div style={{ width: resolvedWidth, height, ...props.style }}>{type}</div>;
   }
 };
 

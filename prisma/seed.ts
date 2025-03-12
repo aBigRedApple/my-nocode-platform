@@ -2,173 +2,201 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
-// 可用的组件类型
 const COMPONENT_TYPES = {
-  BUTTON: { type: "button", label: "按钮" },
-  TEXT: { type: "text", label: "文本" },
-  RADIO: { type: "radio", label: "单选" },
-  CHECKBOX: { type: "checkbox", label: "多选" },
-  IMAGE: { type: "image", label: "图片" },
-  DATE: { type: "date", label: "日期" },
-  DATE_RANGE: { type: "dateRange", label: "日期区间" },
-  TABLE: { type: "table", label: "表格" },
+  BUTTON: "button",
+  TEXT: "text",
+  RADIO: "radio",
+  CHECKBOX: "checkbox",
+  IMAGE: "image",
+  DATE: "date",
+  DATE_RANGE: "dateRange",
+  TABLE: "table",
+  CARD: "card",
 };
 
 async function seed() {
   try {
-    // 清空模板表
     await prisma.template.deleteMany();
     console.log("已清空模板表");
 
-    // 定义 10 个优化后的模板数据
     const templates = [
       {
-        id: 1,
-        name: "商业计划书模板",
-        description: "优雅的商业展示模板",
-        thumbnail: "/templates/business-plan.jpg",
+        "id": 1,
+        "name": "现代个人简历",
+        "description": "优雅现代的个人简历设计",
+        "thumbnail": "/templates/modern-resume.jpg",
+        "category": "personal",
+        "content": {
+          "boxes": [
+            {
+              "id": 1,
+              "positionX": 0,
+              "positionY": 0,
+              "width": "100%",
+              "components": [
+                {
+                  "id": 1,
+                  "type": COMPONENT_TYPES.CARD,
+                  "width": "100%",
+                  "height": 140,
+                  "props": {
+                    "title": "李明",
+                    "content": "138-1234-5678 | liming@example.com | 上海",
+                    "backgroundColor": "linear-gradient(135deg, #4b5563, #d1d5db)",
+                    "style": { "color": "#fff", "padding": "20px" }
+                  },
+                  "imageId": null
+                },
+                {
+                  "id": 2,
+                  "type": COMPONENT_TYPES.IMAGE,
+                  "width": "100%",
+                  "height": 220,
+                  "props": {
+                    "src": "http://localhost:3000/seed/profile-pic.jpg",
+                    "style": { "borderRadius": "12px", "margin": "16px 0", "boxShadow": "0 4px 8px rgba(0,0,0,0.1)" }
+                  },
+                  "imageId": 1
+                }
+              ]
+            },
+            {
+              "id": 2,
+              "positionX": 0,
+              "positionY": 380,
+              "width": "100%",
+              "components": [
+                {
+                  "id": 3,
+                  "type": COMPONENT_TYPES.CARD,
+                  "width": "100%",
+                  "height": 120,
+                  "props": {
+                    "title": "教育背景",
+                    "content": "清华大学，计算机科学与技术，2019-2023",
+                    "backgroundColor": "#f3f4f6",
+                    "style": { "fontFamily": "Arial", "color": "#374151", "fontSize": "16px", "padding": "16px", "marginBottom": "16px", "borderRadius": "8px" }
+                  },
+                  "imageId": null
+                }
+              ]
+            },
+            {
+              "id": 3,
+              "positionX": 0,
+              "positionY": 516,
+              "width": "100%",
+              "components": [
+                {
+                  "id": 4,
+                  "type": COMPONENT_TYPES.CARD,
+                  "width": "100%",
+                  "height": 160,
+                  "props": {
+                    "title": "技能",
+                    "content": "- React\n- TypeScript\n- Node.js\n- Python\n- UI/UX",
+                    "backgroundColor": "#f9fafb",
+                    "style": { "color": "#1f2937", "fontSize": "14px", "padding": "16px", "marginBottom": "16px", "borderRadius": "8px" }
+                  },
+                  "imageId": null
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "positionX": 0,
+              "positionY": 692,
+              "width": "100%",
+              "components": [
+                {
+                  "id": 5,
+                  "type": COMPONENT_TYPES.CARD,
+                  "width": "100%",
+                  "height": 160,
+                  "props": {
+                    "title": "工作经验",
+                    "content": "ABC科技，前端开发，2023至今\n- 开发响应式Web应用\n- 优化性能提升30%",
+                    "backgroundColor": "#f3f4f6",
+                    "style": { "fontSize": "14px", "color": "#4b5563", "padding": "16px", "borderRadius": "8px" }
+                  },
+                  "imageId": null
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        id: 2,
+        name: "时尚产品展示",
+        description: "现代化的产品介绍页面",
+        thumbnail: "/templates/product-showcase.jpg",
         category: "business",
         content: {
           boxes: [
             {
-              id: 1,
-              positionX: 40,
-              positionY: 20,
-              width: 400,
-              height: 300,
-              components: [
-                {
-                  id: 1,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 360,
-                  height: 60,
-                  props: {
-                    content: "商业计划书",
-                    style: { fontSize: 24, color: "#2c3e50", fontWeight: "bold" },
-                  },
-                  imageId: null,
-                },
-                {
-                  id: 2,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 360,
-                  height: 80,
-                  props: {
-                    content: "公司: 未来科技有限公司\n目标: 技术创新",
-                    style: { fontSize: 14, color: "#7f8c8d" },
-                  },
-                  imageId: null,
-                },
-              ],
-            },
-            {
-              id: 2,
-              positionX: 460,
-              positionY: 20,
-              width: 340,
-              height: 300,
-              components: [
-                {
-                  id: 3,
-                  ...COMPONENT_TYPES.TABLE,
-                  width: 300,
-                  height: 140,
-                  props: {
-                    rows: 3,
-                    columns: 3,
-                    data: [
-                      ["目标", "收入", "用户数"],
-                      ["短期", "$1M", "10K"],
-                      ["长期", "$5M", "50K"],
-                    ],
-                    style: { border: "1px solid #ecf0f1", backgroundColor: "#f9f9f9" },
-                  },
-                  imageId: null,
-                },
-                {
-                  id: 4,
-                  ...COMPONENT_TYPES.BUTTON,
-                  width: 120,
-                  height: 40,
-                  props: {
-                    content: "查看详情",
-                    style: { backgroundColor: "#3498db", color: "#fff", borderRadius: 5 },
-                  },
-                  imageId: null,
-                },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        id: 2,
-        name: "个人简历模板",
-        description: "简洁现代的简历设计",
-        thumbnail: "/templates/resume.jpg",
-        category: "personal",
-        content: {
-          boxes: [
-            {
               id: 3,
-              positionX: 40,
-              positionY: 20,
-              width: 240,
-              height: 350,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
-                {
-                  id: 5,
-                  ...COMPONENT_TYPES.IMAGE,
-                  width: 200,
-                  height: 200,
-                  props: { src: "http://localhost:3000/uploads/resume-profile.jpg" },
-                  imageId: 1,
-                },
                 {
                   id: 6,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 200,
-                  height: 100,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 320,
                   props: {
-                    content: "张三\n123-456-7890",
-                    style: { fontSize: 16, color: "#34495e", textAlign: "center" },
+                    src: "http://localhost:3000/seed/product-hero.jpg",
+                    style: { borderRadius: "12px", boxShadow: "0 6px 12px rgba(0,0,0,0.15)" },
                   },
-                  imageId: null,
+                  imageId: 2,
                 },
               ],
             },
             {
               id: 4,
-              positionX: 300,
-              positionY: 20,
-              width: 500,
-              height: 350,
+              positionX: 0,
+              positionY: 340,
+              width: "100%",
               components: [
                 {
                   id: 7,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 460,
-                  height: 60,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 80,
                   props: {
-                    content: "个人简历",
-                    style: { fontSize: 22, color: "#2980b9" },
+                    content: "智能手表 Pro",
+                    style: { fontSize: "32px", color: "#dc2626", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
                   id: 8,
-                  ...COMPONENT_TYPES.TABLE,
-                  width: 460,
-                  height: 180,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 100,
                   props: {
-                    rows: 3,
-                    columns: 2,
-                    data: [
-                      ["教育", "北京大学，2018-2022"],
-                      ["经验", "XYZ公司，2022至今"],
-                      ["技能", "Figma: 85%"],
-                    ],
-                    style: { border: "1px solid #ddd", fontSize: 14 },
+                    content: "下一代智能穿戴设备，健康与科技的完美结合",
+                    style: { fontSize: "16px", color: "#6b7280", textAlign: "center", padding: "16px" },
+                  },
+                  imageId: null,
+                },
+                {
+                  id: 9,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
+                  props: {
+                    content: "立即购买",
+                    style: {
+                      backgroundColor: "#dc2626",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      fontSize: "16px",
+                      margin: "0 auto",
+                      display: "block",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    },
                   },
                   imageId: null,
                 },
@@ -179,66 +207,87 @@ async function seed() {
       },
       {
         id: 3,
-        name: "产品展示模板",
-        description: "现代化的产品介绍",
-        thumbnail: "/templates/product.jpg",
+        name: "商业计划书模板",
+        description: "优雅的商业展示模板",
+        thumbnail: "/templates/business-plan.jpg",
         category: "business",
         content: {
           boxes: [
             {
               id: 5,
-              positionX: 40,
-              positionY: 20,
-              width: 400,
-              height: 320,
-              components: [
-                {
-                  id: 9,
-                  ...COMPONENT_TYPES.IMAGE,
-                  width: 360,
-                  height: 240,
-                  props: { src: "http://localhost:3000/uploads/product-image1.jpg" },
-                  imageId: 2,
-                },
-              ],
-            },
-            {
-              id: 6,
-              positionX: 460,
-              positionY: 20,
-              width: 340,
-              height: 320,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
                   id: 10,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 300,
-                  height: 60,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 100,
                   props: {
-                    content: "智能设备",
-                    style: { fontSize: 20, color: "#e74c3c" },
+                    content: "商业计划书 2025",
+                    style: { fontSize: "36px", color: "#2c3e50", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
                   id: 11,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 300,
-                  height: 80,
+                  type: COMPONENT_TYPES.CARD,
+                  width: "100%",
+                  height: 180,
                   props: {
-                    content: "革命性的技术产品",
-                    style: { fontSize: 14, color: "#7f8c8d" },
+                    title: "公司愿景",
+                    content: "引领技术创新，改变世界",
+                    imageSrc: "http://localhost:3000/seed/vision.jpg",
+                    style: {
+                      backgroundColor: "#f9fafb",
+                      borderRadius: "12px",
+                      padding: "20px",
+                      boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                    },
+                  },
+                  imageId: 3,
+                },
+              ],
+            },
+            {
+              id: 6,
+              positionX: 0,
+              positionY: 300,
+              width: "100%",
+              components: [
+                {
+                  id: 12,
+                  type: COMPONENT_TYPES.TABLE,
+                  width: "100%",
+                  height: 200,
+                  props: {
+                    rows: 4,
+                    columns: 3,
+                    data: [
+                      ["阶段", "收入目标", "用户数"],
+                      ["Q1 2025", "$1M", "10K"],
+                      ["Q2 2025", "$3M", "25K"],
+                      ["Q4 2025", "$5M", "50K"],
+                    ],
+                    style: { border: "1px solid #e5e7eb", backgroundColor: "#ffffff", fontSize: "14px" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 12,
-                  ...COMPONENT_TYPES.BUTTON,
-                  width: 120,
-                  height: 40,
+                  id: 13,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "180px",
+                  height: 50,
                   props: {
-                    content: "了解更多",
-                    style: { backgroundColor: "#e74c3c", color: "#fff", borderRadius: 5 },
+                    content: "下载完整计划",
+                    style: {
+                      backgroundColor: "#3498db",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "20px auto 0",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -250,48 +299,72 @@ async function seed() {
       {
         id: 4,
         name: "教育演示模板",
-        description: "简洁的教学演示",
+        description: "简洁的教学演示页面",
         thumbnail: "/templates/education.jpg",
         category: "education",
         content: {
           boxes: [
             {
               id: 7,
-              positionX: 40,
-              positionY: 20,
-              width: 760,
-              height: 300,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 13,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
-                  height: 80,
-                  props: {
-                    content: "现代教育技术",
-                    style: { fontSize: 28, color: "#27ae60", textAlign: "center" },
-                  },
-                  imageId: null,
-                },
-                {
                   id: 14,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
                   height: 100,
                   props: {
-                    content: "探索未来的学习方式",
-                    style: { fontSize: 16, color: "#7f8c8d", textAlign: "center" },
+                    content: "现代教育技术",
+                    style: { fontSize: "36px", color: "#27ae60", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
                   id: 15,
-                  ...COMPONENT_TYPES.BUTTON,
-                  width: 120,
-                  height: 40,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 260,
+                  props: {
+                    src: "http://localhost:3000/seed/education-tech.jpg",
+                    style: { borderRadius: "12px", margin: "16px 0", boxShadow: "0 4px 8px rgba(0,0,0,0.1)" },
+                  },
+                  imageId: 4,
+                },
+              ],
+            },
+            {
+              id: 8,
+              positionX: 0,
+              positionY: 380,
+              width: "100%",
+              components: [
+                {
+                  id: 16,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 120,
+                  props: {
+                    content: "互动 | 个性化 | 高效\n未来的学习方式",
+                    style: { fontSize: "16px", color: "#4b5563", textAlign: "center", padding: "16px" },
+                  },
+                  imageId: null,
+                },
+                {
+                  id: 17,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
                   props: {
                     content: "下一页",
-                    style: { backgroundColor: "#27ae60", color: "#fff", borderRadius: 5 },
+                    style: {
+                      backgroundColor: "#27ae60",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "0 auto",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -303,45 +376,79 @@ async function seed() {
       {
         id: 5,
         name: "公司简介模板",
-        description: "简约的公司介绍",
+        description: "简约的公司介绍页面",
         thumbnail: "/templates/company-profile.jpg",
         category: "business",
         content: {
           boxes: [
             {
-              id: 8,
-              positionX: 40,
-              positionY: 20,
-              width: 760,
-              height: 300,
+              id: 9,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 16,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
-                  height: 60,
+                  id: 18,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 100,
                   props: {
-                    content: "公司简介",
-                    style: { fontSize: 24, color: "#8e44ad" },
+                    content: "关于我们",
+                    style: { fontSize: "36px", color: "#8e44ad", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 17,
-                  ...COMPONENT_TYPES.IMAGE,
-                  width: 300,
+                  id: 19,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 260,
+                  props: {
+                    src: "http://localhost:3000/seed/team-photo.jpg",
+                    style: { borderRadius: "12px", margin: "16px 0", boxShadow: "0 4px 8px rgba(0,0,0,0.1)" },
+                  },
+                  imageId: 5,
+                },
+              ],
+            },
+            {
+              id: 10,
+              positionX: 0,
+              positionY: 380,
+              width: "100%",
+              components: [
+                {
+                  id: 20,
+                  type: COMPONENT_TYPES.CARD,
+                  width: "100%",
                   height: 180,
-                  props: { src: "http://localhost:3000/uploads/team-photo.jpg" },
-                  imageId: 3,
+                  props: {
+                    title: "我们的使命",
+                    content: "提供卓越的技术解决方案，赋能未来",
+                    imageSrc: "http://localhost:3000/seed/mission.jpg",
+                    style: {
+                      backgroundColor: "#f9fafb",
+                      borderRadius: "12px",
+                      padding: "20px",
+                      boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                    },
+                  },
+                  imageId: 6,
                 },
                 {
-                  id: 18,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 400,
-                  height: 80,
+                  id: 21,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
                   props: {
-                    content: "创新驱动未来",
-                    style: { fontSize: 14, color: "#7f8c8d" },
+                    content: "联系我们",
+                    style: {
+                      backgroundColor: "#8e44ad",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "20px auto 0",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -359,59 +466,66 @@ async function seed() {
         content: {
           boxes: [
             {
-              id: 9,
-              positionX: 40,
-              positionY: 20,
-              width: 400,
-              height: 320,
+              id: 11,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 19,
-                  ...COMPONENT_TYPES.IMAGE,
-                  width: 360,
-                  height: 240,
-                  props: { src: "http://localhost:3000/uploads/sunny-day.jpg" },
-                  imageId: 4,
+                  id: 22,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 300,
+                  props: {
+                    src: "http://localhost:3000/seed/sunny-day.jpg",
+                    style: { borderRadius: "12px", boxShadow: "0 6px 12px rgba(0,0,0,0.15)" },
+                  },
+                  imageId: 7,
                 },
               ],
             },
             {
-              id: 10,
-              positionX: 460,
-              positionY: 20,
-              width: 340,
-              height: 320,
+              id: 12,
+              positionX: 0,
+              positionY: 320,
+              width: "100%",
               components: [
                 {
-                  id: 20,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 300,
-                  height: 60,
-                  props: {
-                    content: "美好一天",
-                    style: { fontSize: 20, color: "#f1c40f" },
-                  },
-                  imageId: null,
-                },
-                {
-                  id: 21,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 300,
+                  id: 23,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
                   height: 80,
                   props: {
-                    content: "阳光明媚，心情愉快",
-                    style: { fontSize: 14, color: "#7f8c8d" },
+                    content: "美好一天",
+                    style: { fontSize: "32px", color: "#f1c40f", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 22,
-                  ...COMPONENT_TYPES.BUTTON,
-                  width: 120,
-                  height: 40,
+                  id: 24,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 120,
+                  props: {
+                    content: "阳光明媚，心情愉快，记录生活的点滴",
+                    style: { fontSize: "16px", color: "#6b7280", textAlign: "center", padding: "16px" },
+                  },
+                  imageId: null,
+                },
+                {
+                  id: 25,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
                   props: {
                     content: "阅读更多",
-                    style: { backgroundColor: "#f1c40f", color: "#fff", borderRadius: 5 },
+                    style: {
+                      backgroundColor: "#f1c40f",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "0 auto",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -429,43 +543,68 @@ async function seed() {
         content: {
           boxes: [
             {
-              id: 11,
-              positionX: 40,
-              positionY: 20,
-              width: 760,
-              height: 300,
+              id: 13,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 23,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
-                  height: 80,
-                  props: {
-                    content: "现代物理学笔记",
-                    style: { fontSize: 22, color: "#d35400" },
-                  },
-                  imageId: null,
-                },
-                {
-                  id: 24,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
+                  id: 26,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
                   height: 100,
                   props: {
-                    content: "1. 量子力学\n2. 相对论",
-                    style: { fontSize: 14, color: "#7f8c8d" },
+                    content: "现代物理学笔记",
+                    style: { fontSize: "32px", color: "#d35400", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 25,
-                  ...COMPONENT_TYPES.CHECKBOX,
-                  width: 200,
-                  height: 60,
+                  id: 27,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 140,
                   props: {
-                    options: ["复习", "作业"],
+                    content: "1. 量子力学\n2. 相对论\n3. 热力学",
+                    style: { fontSize: "16px", color: "#4b5563", textAlign: "left", padding: "16px" },
+                  },
+                  imageId: null,
+                },
+              ],
+            },
+            {
+              id: 14,
+              positionX: 0,
+              positionY: 260,
+              width: "100%",
+              components: [
+                {
+                  id: 28,
+                  type: COMPONENT_TYPES.CHECKBOX,
+                  width: "100%",
+                  height: 100,
+                  props: {
+                    label: "任务",
+                    options: ["复习", "作业", "实验"],
                     selected: ["复习"],
-                    style: { color: "#d35400" },
+                    style: { color: "#d35400", fontSize: "14px", padding: "16px" },
+                  },
+                  imageId: null,
+                },
+                {
+                  id: 29,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
+                  props: {
+                    content: "保存笔记",
+                    style: {
+                      backgroundColor: "#d35400",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "0 auto",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -483,48 +622,73 @@ async function seed() {
         content: {
           boxes: [
             {
-              id: 12,
-              positionX: 40,
-              positionY: 20,
-              width: 760,
-              height: 300,
+              id: 15,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 26,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
-                  height: 60,
+                  id: 30,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 100,
                   props: {
-                    content: "营销计划",
-                    style: { fontSize: 24, color: "#c0392b" },
+                    content: "2025 营销计划",
+                    style: { fontSize: "36px", color: "#c0392b", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 27,
-                  ...COMPONENT_TYPES.TABLE,
-                  width: 720,
-                  height: 140,
+                  id: 31,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 240,
                   props: {
-                    rows: 3,
-                    columns: 2,
+                    src: "http://localhost:3000/seed/marketing-strategy.jpg",
+                    style: { borderRadius: "12px", margin: "16px 0", boxShadow: "0 4px 8px rgba(0,0,0,0.1)" },
+                  },
+                  imageId: 8,
+                },
+              ],
+            },
+            {
+              id: 16,
+              positionX: 0,
+              positionY: 360,
+              width: "100%",
+              components: [
+                {
+                  id: 32,
+                  type: COMPONENT_TYPES.TABLE,
+                  width: "100%",
+                  height: 200,
+                  props: {
+                    rows: 4,
+                    columns: 3,
                     data: [
-                      ["目标", "策略"],
-                      ["销量", "促销"],
-                      ["品牌", "社交媒体"],
+                      ["目标", "策略", "预算"],
+                      ["销量增长", "促销活动", "$50K"],
+                      ["品牌知名度", "社交媒体", "$30K"],
+                      ["客户留存", "会员计划", "$20K"],
                     ],
-                    style: { border: "1px solid #ecf0f1" },
+                    style: { border: "1px solid #e5e7eb", backgroundColor: "#ffffff", fontSize: "14px" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 28,
-                  ...COMPONENT_TYPES.BUTTON,
-                  width: 120,
-                  height: 40,
+                  id: 33,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
                   props: {
-                    content: "执行",
-                    style: { backgroundColor: "#c0392b", color: "#fff", borderRadius: 5 },
+                    content: "执行计划",
+                    style: {
+                      backgroundColor: "#c0392b",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "20px auto 0",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -542,43 +706,68 @@ async function seed() {
         content: {
           boxes: [
             {
-              id: 13,
-              positionX: 40,
-              positionY: 20,
-              width: 760,
-              height: 300,
+              id: 17,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 29,
-                  ...COMPONENT_TYPES.DATE,
-                  width: 200,
-                  height: 40,
+                  id: 34,
+                  type: COMPONENT_TYPES.DATE,
+                  width: "220px",
+                  height: 50,
                   props: {
-                    value: "2025-03-07",
-                    style: { fontSize: 16, color: "#16a085" },
+                    value: "2025-03-11",
+                    style: {
+                      fontSize: "16px",
+                      color: "#16a085",
+                      borderRadius: "8px",
+                      margin: "0 auto",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
                 {
-                  id: 30,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
+                  id: 35,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 260,
+                  props: {
+                    src: "http://localhost:3000/seed/diary-moment.jpg",
+                    style: { borderRadius: "12px", margin: "16px 0", boxShadow: "0 4px 8px rgba(0,0,0,0.1)" },
+                  },
+                  imageId: 9,
+                },
+              ],
+            },
+            {
+              id: 18,
+              positionX: 0,
+              positionY: 340,
+              width: "100%",
+              components: [
+                {
+                  id: 36,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 140,
+                  props: {
+                    content: "今天阳光明媚，心情很好，去了公园散步，感受大自然的美好。",
+                    style: { fontSize: "16px", color: "#4b5563", textAlign: "left", padding: "16px" },
+                  },
+                  imageId: null,
+                },
+                {
+                  id: 37,
+                  type: COMPONENT_TYPES.RADIO,
+                  width: "100%",
                   height: 100,
                   props: {
-                    content: "今天阳光明媚，心情很好",
-                    style: { fontSize: 14, color: "#7f8c8d" },
-                  },
-                  imageId: null,
-                },
-                {
-                  id: 31,
-                  ...COMPONENT_TYPES.RADIO,
-                  width: 200,
-                  height: 60,
-                  props: {
+                    label: "今日心情",
                     options: ["开心", "平静", "疲惫"],
                     selected: "开心",
-                    style: { color: "#16a085" },
+                    style: { color: "#16a085", fontSize: "14px", padding: "16px" },
                   },
                   imageId: null,
                 },
@@ -596,49 +785,76 @@ async function seed() {
         content: {
           boxes: [
             {
-              id: 14,
-              positionX: 40,
-              positionY: 20,
-              width: 760,
-              height: 300,
+              id: 19,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
               components: [
                 {
-                  id: 32,
-                  ...COMPONENT_TYPES.TEXT,
-                  width: 720,
-                  height: 60,
+                  id: 38,
+                  type: COMPONENT_TYPES.TEXT,
+                  width: "100%",
+                  height: 100,
                   props: {
                     content: "本周课程表",
-                    style: { fontSize: 22, color: "#2980b9" },
+                    style: { fontSize: "36px", color: "#2980b9", fontWeight: "bold", textAlign: "center" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 33,
-                  ...COMPONENT_TYPES.TABLE,
-                  width: 720,
-                  height: 140,
+                  id: 39,
+                  type: COMPONENT_TYPES.TABLE,
+                  width: "100%",
+                  height: 240,
                   props: {
-                    rows: 3,
-                    columns: 2,
+                    rows: 6,
+                    columns: 3,
                     data: [
-                      ["时间", "课程"],
-                      ["9:00", "数学"],
-                      ["10:00", "英语"],
+                      ["时间", "课程", "教室"],
+                      ["09:00-10:00", "数学", "A101"],
+                      ["10:30-11:30", "英语", "B202"],
+                      ["13:00-14:00", "物理", "C303"],
+                      ["14:30-15:30", "编程", "D404"],
+                      ["16:00-17:00", "体育", "操场"],
                     ],
-                    style: { border: "1px solid #ddd" },
+                    style: { border: "1px solid #d1d5db", backgroundColor: "#f9fafb", fontSize: "14px" },
+                  },
+                  imageId: null,
+                },
+              ],
+            },
+            {
+              id: 20,
+              positionX: 0,
+              positionY: 360,
+              width: "100%",
+              components: [
+                {
+                  id: 40,
+                  type: COMPONENT_TYPES.DATE_RANGE,
+                  width: "260px",
+                  height: 50,
+                  props: {
+                    start: "2025-03-11",
+                    end: "2025-03-17",
+                    style: { fontSize: "14px", color: "#2980b9", margin: "0 auto", display: "block" },
                   },
                   imageId: null,
                 },
                 {
-                  id: 34,
-                  ...COMPONENT_TYPES.DATE_RANGE,
-                  width: 200,
-                  height: 40,
+                  id: 41,
+                  type: COMPONENT_TYPES.BUTTON,
+                  width: "160px",
+                  height: 50,
                   props: {
-                    start: "2025-03-07",
-                    end: "2025-03-14",
-                    style: { fontSize: 14, color: "#2980b9" },
+                    content: "导出课程",
+                    style: {
+                      backgroundColor: "#2980b9",
+                      color: "#fff",
+                      borderRadius: "10px",
+                      margin: "20px auto 0",
+                      display: "block",
+                    },
                   },
                   imageId: null,
                 },
@@ -649,7 +865,6 @@ async function seed() {
       },
     ];
 
-    // 将模板数据插入数据库
     await prisma.template.createMany({ data: templates });
     console.log("模板数据已成功插入数据库");
   } catch (error) {
@@ -659,5 +874,4 @@ async function seed() {
   }
 }
 
-// 执行种子函数
 seed();

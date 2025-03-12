@@ -1,12 +1,12 @@
 "use client";
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { useDrop } from "react-dnd";
 import { ComponentPreviewWithProps } from "./ComponentLibrary";
 
 export interface ComponentInfo {
   id?: number;
   type: string;
-  width: number;
+  width: string | number;
   height: number;
   props?: Record<string, any>;
   file?: File;
@@ -15,7 +15,7 @@ export interface ComponentInfo {
 export interface BoxData {
   id: number;
   position: { x: number; y: number };
-  size: { width: number; height: number };
+  size: { width: string };
   confirmedComponents: ComponentInfo[];
   pendingComponents: ComponentInfo[];
   isConfirmed: boolean;
@@ -37,6 +37,8 @@ export const COMPONENT_MARGIN = 16;
 
 interface BoxProps {
   box: BoxData;
+  index: number; // 新增索引
+  totalBoxes: number; // 新增总数
   onConfirm: (id: number) => void;
   onCancel: (id: number) => void;
   onClick: (id: number) => void;
@@ -47,6 +49,8 @@ interface BoxProps {
 
 const Box: React.FC<BoxProps> = ({
   box,
+  index,
+  totalBoxes,
   onConfirm,
   onCancel,
   onClick,
@@ -61,93 +65,70 @@ const Box: React.FC<BoxProps> = ({
     [box.confirmedComponents, box.pendingComponents]
   );
 
-  useEffect(() => {
-    const componentsHeight = allComponents.reduce((sum, comp) => sum + comp.height, 0);
-    const marginsHeight = allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0;
-    const padding = 32;
-    const newHeight = Math.max(componentsHeight + marginsHeight + padding, 350);
-    const maxComponentWidth = allComponents.reduce((max, comp) => Math.max(max, comp.width), 135);
-    const newWidth = Math.max(maxComponentWidth + 32, box.size.width);
-
-    if (newHeight !== box.size.height || newWidth !== box.size.width) {
-      onUpdateBox(box.id, { size: { width: newWidth, height: newHeight } });
-    }
-  }, [allComponents, box.id, box.size.width, box.size.height, onUpdateBox]);
-
-  const [{ isOver }, drop] = useDrop(() => ({
+  const [{ isOver, canDrop }, drop] = useDrop({
     accept: "component",
     drop: (item: { type: string }) => {
       const baseHeight = COMPONENT_DEFAULT_HEIGHTS[item.type] || COMPONENT_DEFAULT_HEIGHTS.default;
-      const componentHeight = baseHeight;
-      const extraSpaceNeeded = componentHeight + (allComponents.length > 0 ? COMPONENT_MARGIN : 0);
-
-      const currentHeight =
-        allComponents.reduce((sum, comp) => sum + comp.height, 0) +
-        (allComponents.length > 1 ? (allComponents.length - 1) * COMPONENT_MARGIN : 0) +
-        32;
-
-      if (currentHeight + extraSpaceNeeded <= box.size.height) {
-        onAddComponent(box.id, { type: item.type, width: 100, height: componentHeight, props: {} });
-      } else {
-        console.log("空间不足，无法添加组件");
-      }
+      const newComponent: ComponentInfo = {
+        type: item.type,
+        width: "100%",
+        height: baseHeight,
+        props: {},
+      };
+      onAddComponent(box.id, newComponent);
     },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
     }),
-  }), [allComponents, box.size.height, onAddComponent]);
+  });
 
   const renderComponents = (components: ComponentInfo[]) => {
-    let currentTop = 16;
-    return components.map((comp, index) => {
-      const componentElement = (
-        <div
-          key={index}
-          style={{
-            position: "absolute",
-            top: currentTop,
-            width: comp.width,
-            height: comp.height,
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelectComponent?.(box.id, index);
-          }}
-        >
-          <ComponentPreviewWithProps type={comp.type} props={comp.props} width={comp.width} height={comp.height} />
-        </div>
-      );
-      currentTop += comp.height + (index < components.length - 1 ? COMPONENT_MARGIN : 0);
-      return componentElement;
-    });
+    return components.map((comp, index) => (
+      <div
+        key={`${comp.type}-${index}`}
+        className="mb-4"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectComponent?.(box.id, index);
+        }}
+      >
+        <ComponentPreviewWithProps type={comp.type} props={comp.props} width={comp.width} height={comp.height} />
+      </div>
+    ));
   };
+
+  // 判断是否为最后一个盒子
+  const isLastBox = index === totalBoxes - 1;
 
   return (
     <div
-      ref={(node) => {
-        drop(node);
-        boxRef.current = node;
-      }}
-      className={`absolute ${box.isConfirmed ? "" : "border-2 border-blue-500"} p-4 ${isOver ? "bg-blue-50" : "bg-white"}`}
+      ref={drop}
+      className={`p-4 flex flex-col ${
+        !box.isConfirmed
+          ? "border-2 border-blue-500"
+          : isLastBox
+          ? "border-b-0" // 最后一个盒子无虚线
+          : "border-b-2 border-dashed border-gray-300" // 非最后一个盒子加虚线
+      } ${isOver ? "bg-blue-50" : "bg-white"}`}
       style={{
         width: box.size.width,
-        height: box.size.height,
-        position: "relative",
-        cursor: box.isConfirmed ? "pointer" : "default",
       }}
       onClick={(e) => {
         e.stopPropagation();
         onClick(box.id);
       }}
     >
-      {allComponents.length > 0 ? (
-        renderComponents(allComponents)
-      ) : !box.isConfirmed ? (
-        <div className="flex items-center justify-center h-full text-gray-400">拖放组件到这里</div>
-      ) : null}
+      <div className="flex-1">
+        {allComponents.length > 0 ? (
+          <div className="flex flex-col">{renderComponents(allComponents)}</div>
+        ) : !box.isConfirmed ? (
+          <div className="flex items-center justify-center h-20 text-gray-400">拖放组件到这里</div>
+        ) : null}
+      </div>
 
       {!box.isConfirmed && (
-        <div className="absolute bottom-2 right-2 flex space-x-2">
+        <div className="flex justify-end space-x-2 mt-2">
           <button
             onClick={(e) => {
               e.stopPropagation();

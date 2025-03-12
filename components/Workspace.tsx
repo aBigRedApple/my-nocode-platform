@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, Fragment } from "react";
-import Box, { BoxData, ComponentInfo } from "./Box";
+import Box, { BoxData, ComponentInfo, COMPONENT_DEFAULT_HEIGHTS } from "./Box";
 import { FaUndo, FaRedo, FaSave } from "react-icons/fa";
 import axios from "../utils/axios";
 import { Dialog, Transition } from "@headlessui/react";
@@ -12,14 +12,19 @@ interface WorkspaceProps {
   onSelectBox?: (boxId: number | null) => void;
   onSelectComponent?: (boxId: number, componentIndex: number | null) => void;
   isSave?: boolean;
+  onUpdateBox?: (boxId: number, updatedBox: Partial<BoxData> | null) => void;
+  onUpdateComponent?: (
+    boxId: number,
+    componentIndex: number,
+    updatedComponent: Partial<ComponentInfo> & { file?: File }
+  ) => void;
 }
 
 interface SavedBox {
   id: number;
   positionX: number;
   positionY: number;
-  width: number;
-  height: number;
+  width: string;
   components: ComponentInfo[];
 }
 
@@ -30,29 +35,32 @@ const Workspace: React.FC<WorkspaceProps> = ({
   onSelectBox,
   onSelectComponent,
   isSave = true,
+  onUpdateBox: externalUpdateBox,
+  onUpdateComponent: externalUpdateComponent,
 }) => {
   const [nextId, setNextId] = useState(1);
-  const [history, setHistory] = useState<BoxData[][]>([[]]);
+  const [history, setHistory] = useState<BoxData[][]>([boxes]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectDesc, setProjectDesc] = useState("");
   const workspaceRef = useRef<HTMLDivElement>(null);
-  const buttonBarRef = useRef<HTMLDivElement>(null);
 
   const saveHistory = (newBoxes: BoxData[]) => {
     const newHistory = history.slice(0, currentIndex + 1);
-    newHistory.push(newBoxes);
+    newHistory.push([...newBoxes]);
     if (newHistory.length > 10) newHistory.shift();
     setHistory(newHistory);
     setCurrentIndex(newHistory.length - 1);
+    setBoxes(newBoxes);
   };
 
   const handleUndo = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentIndex > 0) {
-      setBoxes(history[currentIndex - 1]);
+      const prevBoxes = history[currentIndex - 1];
+      setBoxes(prevBoxes);
       setCurrentIndex(currentIndex - 1);
     }
   };
@@ -60,7 +68,8 @@ const Workspace: React.FC<WorkspaceProps> = ({
   const handleRedo = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentIndex < history.length - 1) {
-      setBoxes(history[currentIndex + 1]);
+      const nextBoxes = history[currentIndex + 1];
+      setBoxes(nextBoxes);
       setCurrentIndex(currentIndex + 1);
     }
   };
@@ -101,17 +110,12 @@ const Workspace: React.FC<WorkspaceProps> = ({
           positionX: box.position.x,
           positionY: box.position.y,
           width: box.size.width,
-          height: box.size.height,
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
             id: comp.id,
             type: comp.type,
             width: comp.width,
             height: comp.height,
-            props: {
-              ...comp.props,
-              // 如果有 file，清空 src，依赖后端生成 URL
-              src: comp.file ? undefined : comp.props?.src,
-            },
+            props: { ...comp.props, src: comp.file ? undefined : comp.props?.src },
             fileIndex: comp.file ? index : undefined,
           })),
         })),
@@ -132,33 +136,32 @@ const Workspace: React.FC<WorkspaceProps> = ({
     formData.append("projectData", JSON.stringify(projectData));
 
     try {
-      const response = await axios.post<{ layoutId: number; boxes: SavedBox[] }>(
-        "/api/project/save",
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      const response = await axios.post<{ layoutId: number; boxes: SavedBox[] }>("/api/project/save", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       const savedProject = response.data;
+      const updatedBoxes: BoxData[] = boxes.map((originalBox) => {
+        const savedBox = savedProject.boxes.find((b) => b.id === originalBox.id);
+        if (!savedBox) return originalBox;
+        return {
+          ...originalBox,
+          position: { x: savedBox.positionX, y: savedBox.positionY },
+          size: { width: savedBox.width },
+          confirmedComponents: savedBox.components.map((comp) => ({
+            id: comp.id,
+            type: comp.type,
+            width: comp.width,
+            height: comp.height,
+            props: comp.props,
+            file: undefined,
+          })),
+          pendingComponents: [],
+          isConfirmed: true,
+        };
+      });
 
-      const newBoxes: BoxData[] = savedProject.boxes.map((box) => ({
-        id: box.id,
-        position: { x: box.positionX, y: box.positionY },
-        size: { width: box.width, height: box.height },
-        confirmedComponents: box.components.map((comp) => ({
-          id: comp.id,
-          type: comp.type,
-          width: comp.width,
-          height: comp.height,
-          props: comp.props, // 使用后端返回的 props
-          file: undefined,
-        })),
-        pendingComponents: [],
-        isConfirmed: true,
-      }));
-
-      setBoxes(newBoxes);
+      saveHistory(updatedBoxes);
       setTimeout(() => {
         setBoxes([]);
         setHistory([[]]);
@@ -178,70 +181,19 @@ const Workspace: React.FC<WorkspaceProps> = ({
     }
   };
 
-  const getButtonOffset = () => {
-    if (buttonBarRef.current) {
-      const buttonRect = buttonBarRef.current.getBoundingClientRect();
-      return buttonRect.height + 8;
-    }
-    return 32;
-  };
-
   const handleWorkspaceClick = (e: React.MouseEvent) => {
-    if (!workspaceRef.current) return;
-
-    const rect = workspaceRef.current.getBoundingClientRect();
-    const buttonOffset = getButtonOffset();
-    const paddingOffset = 32;
-    let x = e.clientX - rect.left - paddingOffset;
-    let y = e.clientY - rect.top - buttonOffset;
-
-    const boxWidth = 300;
-    const workspaceWidth = rect.width - 2 * paddingOffset;
-
-    if (x + boxWidth > workspaceWidth) return;
-
-    const isClickInUnconfirmedBox = boxes.some(
-      (box) =>
-        !box.isConfirmed &&
-        x >= box.position.x &&
-        x <= box.position.x + box.size.width &&
-        y >= box.position.y &&
-        y <= box.position.y + box.size.height
-    );
-    if (isClickInUnconfirmedBox) return;
-
-    const clickedConfirmedBox = boxes.find(
-      (box) =>
-        box.isConfirmed &&
-        x >= box.position.x &&
-        x <= box.position.x + box.size.width &&
-        y >= box.position.y &&
-        y <= box.position.y + box.size.height
-    );
-    if (clickedConfirmedBox) {
-      onSelectBox?.(clickedConfirmedBox.id);
-      return;
-    }
-
-    onSelectBox?.(null);
-    onSelectComponent?.(0, null);
-
-    x = Math.max(x, 0);
-    y = Math.max(y, 0);
-
     const newBox: BoxData = {
       id: nextId,
-      position: { x, y },
-      size: { width: 300, height: 350 },
+      position: { x: 0, y: 0 },
+      size: { width: "100%" },
       confirmedComponents: [],
       pendingComponents: [],
       isConfirmed: false,
     };
-
     const newBoxes = [...boxes, newBox];
-    setBoxes(newBoxes);
     setNextId(nextId + 1);
     saveHistory(newBoxes);
+    onSelectBox?.(newBox.id);
   };
 
   const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData> | null) => {
@@ -252,38 +204,43 @@ const Workspace: React.FC<WorkspaceProps> = ({
     } else {
       newBoxes = boxes.map((b) => (b.id === boxId ? { ...b, ...updatedBox } : b));
     }
-    setBoxes(newBoxes);
     saveHistory(newBoxes);
+    externalUpdateBox?.(boxId, updatedBox);
+  };
+
+  const handleUpdateComponent = (
+    boxId: number,
+    componentIndex: number,
+    updatedComponent: Partial<ComponentInfo> & { file?: File }
+  ) => {
+    const newBoxes = boxes.map((box) => {
+      if (box.id !== boxId) return box;
+      const allComponents = [...box.confirmedComponents, ...box.pendingComponents];
+      allComponents[componentIndex] = { ...allComponents[componentIndex], ...updatedComponent };
+      return {
+        ...box,
+        confirmedComponents: allComponents.slice(0, box.confirmedComponents.length),
+        pendingComponents: allComponents.slice(box.confirmedComponents.length),
+      };
+    });
+    saveHistory(newBoxes);
+    externalUpdateComponent?.(boxId, componentIndex, updatedComponent);
   };
 
   return (
-    <div
-      ref={workspaceRef}
-      className={`relative ${className || ""}`}
-      onClick={handleWorkspaceClick}
-      style={{ minHeight: "500px", overflowY: "auto" }}
-    >
-      <div
-        ref={buttonBarRef}
-        className="absolute top-2 left-1/2 transform -translate-x-1/2 flex space-x-2"
-      >
+    <div ref={workspaceRef} className={`flex flex-col h-full ${className || ""}`} onClick={handleWorkspaceClick}>
+      <div className="h-8 flex-shrink-0 flex justify-center items-center space-x-2 bg-white">
         <button
           onClick={handleUndo}
           disabled={currentIndex <= 0}
-          className={`p-2 rounded ${
-            currentIndex <= 0 ? "text-gray-300 cursor-not-allowed" : "text-blue-500 hover:bg-blue-100"
-          }`}
+          className={`p-2 rounded ${currentIndex <= 0 ? "text-gray-300" : "text-blue-500 hover:bg-blue-100"}`}
         >
           <FaUndo />
         </button>
         <button
           onClick={handleRedo}
           disabled={currentIndex >= history.length - 1}
-          className={`p-2 rounded ${
-            currentIndex >= history.length - 1
-              ? "text-gray-300 cursor-not-allowed"
-              : "text-blue-500 hover:bg-blue-100"
-          }`}
+          className={`p-2 rounded ${currentIndex >= history.length - 1 ? "text-gray-300" : "text-blue-500 hover:bg-blue-100"}`}
         >
           <FaRedo />
         </button>
@@ -291,17 +248,70 @@ const Workspace: React.FC<WorkspaceProps> = ({
           <button
             onClick={handleSave}
             disabled={saving}
-            className={`p-2 rounded ${
-              saving ? "text-gray-300 cursor-not-allowed" : "text-green-500 hover:bg-green-100"
-            }`}
+            className={`p-2 rounded ${saving ? "text-gray-300" : "text-green-500 hover:bg-green-100"}`}
           >
             <FaSave />
           </button>
         )}
       </div>
 
+      <div className="flex-1 overflow-y-auto py-4 space-y-4">
+        {boxes.map((box, index) => (
+          <Box
+            key={box.id}
+            box={box}
+            index={index}
+            totalBoxes={boxes.length}
+            onConfirm={(id) => {
+              const boxToConfirm = boxes.find((b) => b.id === id);
+              if (!boxToConfirm) return;
+              if (boxToConfirm.confirmedComponents.length === 0 && boxToConfirm.pendingComponents.length === 0) {
+                handleUpdateBox(id, null);
+              } else {
+                const newBoxes = boxes.map((b) =>
+                  b.id === id
+                    ? {
+                        ...b,
+                        confirmedComponents: [...b.confirmedComponents, ...b.pendingComponents],
+                        pendingComponents: [],
+                        isConfirmed: true,
+                      }
+                    : b
+                );
+                saveHistory(newBoxes);
+              }
+            }}
+            onCancel={(id) => {
+              const boxToCancel = boxes.find((b) => b.id === id);
+              if (!boxToCancel) return;
+              if (boxToCancel.confirmedComponents.length === 0 && boxToCancel.pendingComponents.length === 0) {
+                handleUpdateBox(id, null);
+              } else {
+                const newBoxes = boxes.map((b) =>
+                  b.id === id ? { ...b, pendingComponents: [], isConfirmed: true } : b
+                );
+                saveHistory(newBoxes);
+              }
+            }}
+            onClick={(id) => {
+              onSelectBox?.(id);
+              const newBoxes = boxes.map((b) => (b.id === id ? { ...b, isConfirmed: false } : b));
+              saveHistory(newBoxes);
+            }}
+            onAddComponent={(boxId, component) => {
+              const newBoxes = boxes.map((b) =>
+                b.id === boxId ? { ...b, pendingComponents: [...b.pendingComponents, component] } : b
+              );
+              saveHistory(newBoxes);
+            }}
+            onSelectComponent={onSelectComponent}
+            onUpdateBox={handleUpdateBox}
+          />
+        ))}
+      </div>
+
       <Transition appear show={isModalOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={() => setIsModalOpen(false)}>
+        <Dialog as="div" className="relative z-20" onClose={() => setIsModalOpen(false)}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -373,78 +383,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
           </div>
         </Dialog>
       </Transition>
-
-      {boxes.map((box) => (
-        <div
-          key={box.id}
-          style={{
-            position: "absolute",
-            left: box.position.x + 32,
-            top: box.position.y + getButtonOffset(),
-          }}
-        >
-          <Box
-            box={box}
-            onConfirm={(id) => {
-              const boxToConfirm = boxes.find((b) => b.id === id);
-              if (!boxToConfirm) return;
-              const allComponents = [...boxToConfirm.confirmedComponents, ...boxToConfirm.pendingComponents];
-              const totalComponentHeight = allComponents.reduce(
-                (sum, comp) => sum + comp.height,
-                0
-              );
-              const marginsHeight = allComponents.length > 1 ? (allComponents.length - 1) * 16 : 0;
-              const padding = 32;
-              const newHeight = Math.max(totalComponentHeight + marginsHeight + padding, 350);
-              const newBoxes = boxes.map((b) =>
-                b.id === id
-                  ? {
-                      ...b,
-                      confirmedComponents: allComponents,
-                      pendingComponents: [],
-                      isConfirmed: true,
-                      size: { ...b.size, height: newHeight },
-                    }
-                  : b
-              );
-              setBoxes(newBoxes);
-              saveHistory(newBoxes);
-            }}
-            onCancel={(id) => {
-              const boxToCancel = boxes.find((b) => b.id === id);
-              if (!boxToCancel) return;
-              const newBoxes = boxes.map((b) =>
-                b.id === id
-                  ? {
-                      ...b,
-                      pendingComponents: [],
-                      isConfirmed: true,
-                    }
-                  : b
-              );
-              setBoxes(newBoxes);
-              saveHistory(newBoxes);
-            }}
-            onClick={(id) => {
-              onSelectBox?.(id);
-              const newBoxes = boxes.map((b) =>
-                b.id === id ? { ...b, isConfirmed: false } : b
-              );
-              setBoxes(newBoxes);
-              saveHistory(newBoxes);
-            }}
-            onAddComponent={(boxId, component) => {
-              const newBoxes = boxes.map((b) =>
-                b.id === boxId ? { ...b, pendingComponents: [...b.pendingComponents, component] } : b
-              );
-              setBoxes(newBoxes);
-              saveHistory(newBoxes);
-            }}
-            onSelectComponent={onSelectComponent}
-            onUpdateBox={handleUpdateBox}
-          />
-        </div>
-      ))}
     </div>
   );
 };

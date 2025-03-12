@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 用户表
 model User {
   id        Int        @id @default(autoincrement())
   email     String     @unique @db.VarChar(191)
@@ -22,7 +21,6 @@ model User {
   @@index([email])
 }
 
-// 项目表（Layout）
 model Layout {
   id          Int            @id @default(autoincrement())
   userId      Int
@@ -38,15 +36,13 @@ model Layout {
   @@index([userId])
 }
 
-// 盒子表（Box）
 model Box {
   id         Int         @id @default(autoincrement())
   layoutId   Int
   layout     Layout      @relation(fields: [layoutId], references: [id], onDelete: Cascade)
   positionX  Int         @db.SmallInt
   positionY  Int         @db.SmallInt
-  width      Int         @default(300)
-  height     Int         @default(350)
+  width      String      @default("100%") // 改为 String，支持百分比
   components Component[] // 盒子中的组件
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -54,13 +50,12 @@ model Box {
   @@index([layoutId])
 }
 
-// 组件表（Component）
 model Component {
   id        Int      @id @default(autoincrement())
   boxId     Int
   box       Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
   type      String   @db.VarChar(50)
-  width     Int      @default(100)
+  width     String   @default("100%") // 改为 String，支持百分比
   height    Int      @default(40)
   props     Json?    // 组件属性
   imageId   Int?     @unique
@@ -72,7 +67,6 @@ model Component {
   @@index([type])
 }
 
-// 图片表（Image）
 model Image {
   id        Int        @id @default(autoincrement())
   path      String     @db.VarChar(191)
@@ -81,10 +75,9 @@ model Image {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  @@index([path])
+  @@index([path(100)])
 }
 
-// 模板表（Template）
 model Template {
   id          Int            @id @default(autoincrement())
   name        String         @db.VarChar(100)
@@ -103,7 +96,6 @@ model Template {
   @@index([category])
 }
 
-// Layout 和 Template 的多对多关系中间表
 model LayoutTemplate {
   layoutId   Int
   templateId Int
@@ -116,7 +108,6 @@ model LayoutTemplate {
   @@index([templateId])
 }
 
-// 收藏表（Favorite）
 model Favorite {
   id         Int      @id @default(autoincrement())
   userId     Int
