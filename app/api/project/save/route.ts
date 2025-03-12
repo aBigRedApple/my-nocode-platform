@@ -15,6 +15,7 @@ interface ProjectData {
       positionY: number;
       width: string;
       height: number;
+      order: number;
       layout?: {
         columns: number;
       };
@@ -85,9 +86,10 @@ export async function POST(req: NextRequest) {
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
-    // 按顺序处理 boxes，避免 Promise.all 打乱顺序
+    // 按顺序处理 boxes，保持原始顺序
     const savedBoxes = [];
-    for (const box of project.boxes) {
+    for (let i = 0; i < project.boxes.length; i++) {
+      const box = project.boxes[i];
       const savedBox = await prisma.box.create({
         data: {
           layoutId: layout.id,
@@ -95,6 +97,7 @@ export async function POST(req: NextRequest) {
           positionY: box.positionY,
           width: box.width,
           columns: box.layout?.columns || 1,
+          sortOrder: i,  // 使用 sortOrder
         },
       });
 
@@ -146,11 +149,15 @@ export async function POST(req: NextRequest) {
         })
       );
 
-      savedBoxes.push({
+      savedBoxes.push({  // 使用 push 保持原始顺序
         id: savedBox.id,
-        positionX: savedBox.positionX,
-        positionY: savedBox.positionY,
-        width: savedBox.width,
+        positionX: box.positionX,
+        positionY: box.positionY,
+        width: box.width,
+        order: i,  // 保持原始顺序
+        layout: {
+          columns: box.layout?.columns || 1
+        },
         height: box.height,
         components: savedComponents,
       });

@@ -17,6 +17,7 @@ export interface BoxData {
   id: number;
   position: { x: number; y: number };
   size: { width: string };
+  order: number;
   layout?: {
     columns: number;
   };

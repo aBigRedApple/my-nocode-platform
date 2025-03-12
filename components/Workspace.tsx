@@ -50,12 +50,13 @@ const Workspace: React.FC<WorkspaceProps> = ({
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const saveHistory = (newBoxes: BoxData[]) => {
+    const sortedBoxes = [...newBoxes].sort((a, b) => a.order - b.order);
     const newHistory = history.slice(0, currentIndex + 1);
-    newHistory.push([...newBoxes]);
+    newHistory.push(sortedBoxes);
     if (newHistory.length > 10) newHistory.shift();
     setHistory(newHistory);
     setCurrentIndex(newHistory.length - 1);
-    setBoxes(newBoxes);
+    setBoxes(sortedBoxes);
   };
 
   const handleUndo = (e: React.MouseEvent) => {
@@ -112,6 +113,9 @@ const Workspace: React.FC<WorkspaceProps> = ({
           positionX: box.position.x,
           positionY: box.position.y,
           width: box.size.width,
+          order: box.order || 0,
+          layout: box.layout,
+          height: box.height,
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
             id: comp.id,
             type: comp.type,
@@ -119,6 +123,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
             height: comp.height,
             props: { ...comp.props, src: comp.file ? undefined : comp.props?.src },
             fileIndex: comp.file ? index : undefined,
+            column: comp.column
           })),
         })),
       },
@@ -189,26 +194,31 @@ const Workspace: React.FC<WorkspaceProps> = ({
       id: nextId,
       position: { x: 0, y: 0 },
       size: { width: "100%" },
+      order: boxes.length,
       confirmedComponents: [],
       pendingComponents: [],
       isConfirmed: false,
     };
-    const newBoxes = [...boxes, newBox];
     setNextId(nextId + 1);
-    saveHistory(newBoxes);
-    onSelectBox?.(newBox.id);
+    saveHistory([...boxes, newBox]);
   };
 
   const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData> | null) => {
-    let newBoxes: BoxData[];
-    if (updatedBox === null) {
-      newBoxes = boxes.filter((b) => b.id !== boxId);
-      onSelectBox?.(null);
-    } else {
-      newBoxes = boxes.map((b) => (b.id === boxId ? { ...b, ...updatedBox } : b));
+    if (!updatedBox) {
+      const newBoxes = boxes.filter((b) => b.id !== boxId).map((box, index) => ({
+        ...box,
+        order: index
+      }));
+      saveHistory(newBoxes);
+      return;
     }
+
+    const newBoxes = boxes.map((b) => 
+      b.id === boxId 
+        ? { ...b, ...updatedBox }
+        : b
+    );
     saveHistory(newBoxes);
-    externalUpdateBox?.(boxId, updatedBox);
   };
 
   const handleUpdateComponent = (

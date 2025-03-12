@@ -44,6 +44,7 @@ model Box {
   positionY  Int         @db.SmallInt
   width      String      @default("100%")
   columns    Int         @default(1)      // 列数字段
+  sortOrder  Int         @default(0)      // 添加排序字段
   components Component[] // 盒子中的组件
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -54,7 +55,7 @@ model Box {
 model Component {
   id          Int      @id @default(autoincrement())
   boxId       Int
-  box         Box      @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  box         Box      @relation(fields: [boxId], references: [id])
   type        String   @db.VarChar(50)
   width       String   @default("100%")
   height      Int      @default(40)

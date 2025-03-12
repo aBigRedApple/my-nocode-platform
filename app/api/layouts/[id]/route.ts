@@ -3,7 +3,7 @@ import prisma from "@/prisma/client";
 import jwt from "jsonwebtoken";
 import path from "path";
 import fs from "fs/promises";
-import { Prisma, Box, Component, Layout } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 const JWT_SECRET = process.env.JWT_SECRET || "3f8e7d6c5b4a39281f0e1d2c3b4a5967d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2";
 
@@ -116,25 +116,25 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     // 按顺序创建新 boxes
     const savedBoxes = await Promise.all(
-      boxes.map(async (box: BoxData) => {
-        // 创建 box 时设置 columns
+      boxes.map(async (box: BoxData, index: number) => {
         const savedBox = await prisma.box.create({
           data: {
             layoutId,
             positionX: box.positionX,
             positionY: box.positionY,
             width: box.width,
-            columns: box.layout?.columns || 1
+            columns: box.layout?.columns || 1,
+            sortOrder: index, // 保存 box 的顺序
           },
         });
 
         const savedComponents = await Promise.all(
-          box.components.map(async (comp: ComponentData, index: number) => {
+          box.components.map(async (comp: ComponentData, compIndex: number) => {
             let imageId: number | undefined;
             let imageUrl: string | undefined;
 
             if (comp.fileIndex !== undefined) {
-              const fileKey = `image-${box.id}-${comp.fileIndex}`;
+              const fileKey = `image-${box.id || index}-${comp.fileIndex}`;
               const file = formData.get(fileKey);
               if (file instanceof Blob) {
                 const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.name || "unknown.jpg"}`;
@@ -151,7 +151,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
             const updatedProps = imageUrl ? { ...comp.props, src: imageUrl } : comp.props;
 
-            // 创建 component 时设置 columnIndex
             const component = await prisma.component.create({
               data: {
                 boxId: savedBox.id,
@@ -160,23 +159,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
                 height: comp.height,
                 props: updatedProps as Prisma.JsonValue,
                 columnIndex: comp.column || 0,
-                sortOrder: index,
-                imageId
+                sortOrder: compIndex, // 确保组件顺序
+                imageId,
               },
             });
 
-            const componentWithProps = {
-              ...component,
-              props: component.props as Record<string, unknown>,
-            };
-
             return {
-              id: componentWithProps.id,
-              type: componentWithProps.type,
-              width: componentWithProps.width,
-              height: componentWithProps.height,
-              props: componentWithProps.props,
-              column: componentWithProps.columnIndex,
+              id: component.id,
+              type: component.type,
+              width: component.width,
+              height: component.height,
+              props: component.props as Record<string, unknown>,
+              column: component.columnIndex,
             };
           })
         );
@@ -187,7 +181,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           positionY: savedBox.positionY,
           width: savedBox.width,
           layout: {
-            columns: box.layout?.columns || 1
+            columns: box.layout?.columns || 1,
           },
           components: savedComponents,
         };
@@ -200,10 +194,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       include: {
         boxes: {
           include: {
-            components: true
-          }
-        }
-      }
+            components: true,
+          },
+        },
+      },
     });
 
     const response = {
@@ -241,34 +235,33 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     const layout = await prisma.layout.findFirst({
-      where: { 
+      where: {
         id: layoutId,
-        userId: decoded.userId 
+        userId: decoded.userId,
       },
       include: {
         boxes: {
           include: {
             components: {
               include: {
-                image: true
+                image: true,
               },
               orderBy: {
-                sortOrder: 'asc'
-              }
-            }
+                sortOrder: "asc", // 组件按 sortOrder 排序
+              },
+            },
           },
           orderBy: {
-            id: 'asc'
-          }
-        }
-      }
+            sortOrder: "asc", // boxes 按 sortOrder 排序
+          },
+        },
+      },
     });
 
     if (!layout) {
       return NextResponse.json({ message: "项目不存在" }, { status: 404 });
     }
 
-    // 转换数据格式以匹配前端需求
     const formattedLayout: FormattedLayout = {
       id: layout.id,
       name: layout.name,
@@ -278,9 +271,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         positionX: box.positionX,
         positionY: box.positionY,
         width: box.width,
-        layout: box.columns > 1 ? {
-          columns: box.columns
-        } : undefined,
+        layout: box.columns > 1 ? { columns: box.columns } : undefined,
         components: box.components.map((comp) => ({
           id: comp.id,
           type: comp.type,
@@ -288,12 +279,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           height: comp.height,
           props: comp.props as Record<string, unknown>,
           column: comp.columnIndex,
-          file: comp.image ? {
-            path: comp.image.path,
-            size: comp.image.size || 0
-          } : undefined
-        }))
-      }))
+          file: comp.image
+            ? {
+                path: comp.image.path,
+                size: comp.image.size || 0,
+              }
+            : undefined,
+        })),
+      })),
     };
 
     return NextResponse.json(formattedLayout, { status: 200 });

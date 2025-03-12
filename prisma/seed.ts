@@ -33,6 +33,7 @@ async function seed() {
               "positionX": 0,
               "positionY": 0,
               "width": "100%",
+              "order": 0,
               "components": [
                 {
                   "id": 1,
@@ -65,6 +66,7 @@ async function seed() {
               "positionX": 0,
               "positionY": 380,
               "width": "100%",
+              "order": 1,
               "components": [
                 {
                   "id": 3,
@@ -139,6 +141,7 @@ async function seed() {
               positionX: 0,
               positionY: 0,
               width: "100%",
+              order: 0,
               components: [
                 {
                   id: 6,
