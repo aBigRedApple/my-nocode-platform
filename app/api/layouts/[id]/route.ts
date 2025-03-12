@@ -247,13 +247,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 image: true,
               },
               orderBy: {
-                sortOrder: "asc", // 组件按 sortOrder 排序
-              },
+                sortOrder: 'asc'  // 组件排序
+              }
             },
           },
           orderBy: {
-            sortOrder: "asc", // boxes 按 sortOrder 排序
-          },
+            sortOrder: 'asc'  // 使用 sortOrder 而不是 id
+          }
         },
       },
     });
@@ -271,7 +271,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         positionX: box.positionX,
         positionY: box.positionY,
         width: box.width,
-        layout: box.columns > 1 ? { columns: box.columns } : undefined,
+        layout: box.columns > 1 ? {
+          columns: box.columns
+        } : undefined,
         components: box.components.map((comp) => ({
           id: comp.id,
           type: comp.type,

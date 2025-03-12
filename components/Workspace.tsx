@@ -50,7 +50,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const saveHistory = (newBoxes: BoxData[]) => {
-    const sortedBoxes = [...newBoxes].sort((a, b) => a.order - b.order);
+    const sortedBoxes = [...newBoxes].sort((a, b) => a.sortOrder - b.sortOrder);
     const newHistory = history.slice(0, currentIndex + 1);
     newHistory.push(sortedBoxes);
     if (newHistory.length > 10) newHistory.shift();
@@ -113,7 +113,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
           positionX: box.position.x,
           positionY: box.position.y,
           width: box.size.width,
-          order: box.order || 0,
+          sortOrder: box.sortOrder || 0,
           layout: box.layout,
           height: box.height,
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
@@ -194,7 +194,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
       id: nextId,
       position: { x: 0, y: 0 },
       size: { width: "100%" },
-      order: boxes.length,
+      sortOrder: boxes.length,
       confirmedComponents: [],
       pendingComponents: [],
       isConfirmed: false,
@@ -207,7 +207,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
     if (!updatedBox) {
       const newBoxes = boxes.filter((b) => b.id !== boxId).map((box, index) => ({
         ...box,
-        order: index
+        sortOrder: index
       }));
       saveHistory(newBoxes);
       return;
