@@ -32,6 +32,11 @@ interface ComponentProps {
   title?: string;
   backgroundColor?: string;
   imageSrc?: string;
+  style?: {
+    fontSize?: number;
+    color?: string;
+    textAlign?: string;
+  };
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
@@ -258,14 +263,47 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               </>
             )}
             {selectedComponent.type === "text" && (
-              <label className="block mt-2">
-                内容:
-                <textarea
-                  value={getComponentProps(selectedComponent).content || ""}
-                  onChange={(e) => handlePropChange("content", e.target.value)}
-                  className="w-full border p-1 mt-1 rounded h-20"
-                />
-              </label>
+              <>
+                <label className="block mt-2">
+                  内容:
+                  <textarea
+                    value={getComponentProps(selectedComponent).content || ""}
+                    onChange={(e) => handlePropChange("content", e.target.value)}
+                    className="w-full border p-1 mt-1 rounded h-20"
+                  />
+                </label>
+                <label className="block mt-2">
+                  字体大小 (px):
+                  <input
+                    type="number"
+                    min="10"
+                    value={getComponentProps(selectedComponent).style?.fontSize || 14}
+                    onChange={(e) => handlePropChange("style", { ...getComponentProps(selectedComponent).style, fontSize: parseInt(e.target.value) })}
+                    className="w-full border p-1 mt-1 rounded"
+                  />
+                </label>
+                <label className="block mt-2">
+                  颜色:
+                  <input
+                    type="color"
+                    value={getComponentProps(selectedComponent).style?.color || "#000000"}
+                    onChange={(e) => handlePropChange("style", { ...getComponentProps(selectedComponent).style, color: e.target.value })}
+                    className="w-full mt-1"
+                  />
+                </label>
+                <label className="block mt-2">
+                  对齐方式:
+                  <select
+                    value={getComponentProps(selectedComponent).style?.textAlign || "left"}
+                    onChange={(e) => handlePropChange("style", { ...getComponentProps(selectedComponent).style, textAlign: e.target.value })}
+                    className="w-full border p-1 mt-1 rounded"
+                  >
+                    <option value="left">左对齐</option>
+                    <option value="center">居中</option>
+                    <option value="right">右对齐</option>
+                  </select>
+                </label>
+              </>
             )}
             {selectedComponent.type === "radio" && (
               <>

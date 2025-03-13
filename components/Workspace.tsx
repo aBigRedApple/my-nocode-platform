@@ -229,19 +229,16 @@ const Workspace: React.FC<WorkspaceProps> = ({
   };
 
   const handleUpdateBox = (boxId: number, updatedBox: Partial<BoxData> | null) => {
-    if (!updatedBox) {
-      const newBoxes = boxes.filter((b) => b.id !== boxId).map((box, index) => ({
-        ...box,
-        sortOrder: index,
-      }));
+    if (updatedBox === null) {
+      const newBoxes = boxes.filter((box) => box.id !== boxId);
       saveHistory(newBoxes);
+      setBoxes(newBoxes);
+      onSelectBox?.(null);
       return;
     }
-
-    const newBoxes = boxes.map((b) =>
-      b.id === boxId ? { ...b, ...updatedBox } : b
-    );
+    const newBoxes = boxes.map((box) => (box.id === boxId ? { ...box, ...updatedBox } : box));
     saveHistory(newBoxes);
+    setBoxes(newBoxes);
   };
 
   const handleUpdateComponent = (
@@ -260,7 +257,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
       };
     });
     saveHistory(newBoxes);
-    externalUpdateComponent?.(boxId, componentIndex, updatedComponent);
+    setBoxes(newBoxes);
   };
 
   return (
