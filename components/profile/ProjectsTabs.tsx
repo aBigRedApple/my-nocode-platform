@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { Tabs, Button, Skeleton, Empty, Modal } from "antd";
 import { ProjectOutlined, AppstoreOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -9,9 +11,10 @@ import { useRouter } from "next/navigation";
 interface Project {
   id: number;
   name: string;
-  description: string;
+  description: string | null;
   createdAt: string;
   updatedAt: string;
+  preview?: string; // 添加 preview
 }
 
 interface Template {
@@ -26,13 +29,14 @@ interface Props {
   loading: boolean;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  templates: Template[];
   router: ReturnType<typeof useRouter>;
 }
 
-const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router }) => {
+const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templates: initialTemplates, router }) => {
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<number | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<Template[]>(initialTemplates);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [isTemplateDeleteModalVisible, setIsTemplateDeleteModalVisible] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<number | null>(null);
@@ -95,7 +99,6 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router 
     setProjectToDelete(null);
   };
 
-  // 删除收藏模板
   const handleDeleteTemplate = async (id: number) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -143,13 +146,12 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router 
         return;
       }
 
-      // 验证项目是否存在
       const response = await axios.get(`/api/layouts/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.status === 200) {
-        console.log("正在跳转到编辑页面:", `/editor/${projectId}`);
+        console.log("跳转到编辑页面:", `/editor/${projectId}`);
         router.replace(`/editor/${projectId}`);
       } else {
         toast.error("无法访问该项目");
@@ -257,7 +259,6 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router 
         ]}
       />
 
-      {/* 项目删除确认模态框 */}
       <Modal
         title="确认删除项目"
         open={isDeleteModalVisible}
@@ -270,7 +271,6 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, router 
         <p>确定要删除此项目吗？此操作不可撤销。</p>
       </Modal>
 
-      {/* 模板删除确认模态框 */}
       <Modal
         title="确认取消收藏"
         open={isTemplateDeleteModalVisible}

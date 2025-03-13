@@ -19,9 +19,10 @@ interface UserInfo {
 interface Project {
   id: number;
   name: string;
-  description: string;
+  description: string | null; // 与后端一致，允许 null
   createdAt: string;
   updatedAt: string;
+  preview?: string; // 添加 preview
 }
 
 interface Template {
@@ -54,8 +55,10 @@ const Profile: React.FC = () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await axios.get("/api/user/profile");
+      const response = await axios.get("/api/user/profile"); // 修正为 /api/profile
       const { user, layouts, templates } = response.data;
+
+      console.log("Fetched profile data:", response.data); // 调试日志
 
       setUserInfo({ name: user.name, email: user.email });
       setProjects(
@@ -65,11 +68,13 @@ const Profile: React.FC = () => {
           description: layout.description || "暂无描述",
           createdAt: new Date(layout.createdAt).toLocaleDateString("zh-CN"),
           updatedAt: new Date(layout.updatedAt).toLocaleDateString("zh-CN"),
+          preview: layout.preview, // 传递 preview
         }))
       );
       setTemplates(templates);
       setLoading(false);
     } catch (error) {
+      console.error("Error fetching user data:", error);
       toast.error("获取用户数据失败，请重新登录");
       router.push("/auth/login");
     }

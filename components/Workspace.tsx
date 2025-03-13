@@ -1,10 +1,11 @@
 "use client";
 import { useState, useRef, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import Box, { BoxData, ComponentInfo, COMPONENT_DEFAULT_HEIGHTS } from "./Box";
+import Box, { BoxData, ComponentInfo } from "./Box";
 import { FaUndo, FaRedo, FaSave } from "react-icons/fa";
 import axios from "../utils/axios";
 import { Dialog, Transition } from "@headlessui/react";
+import html2canvas from "html2canvas";
 
 interface WorkspaceProps {
   className?: string;
@@ -106,6 +107,24 @@ const Workspace: React.FC<WorkspaceProps> = ({
       return;
     }
 
+    // 生成预览图
+    let screenshotBlob: Blob | null = null;
+    if (workspaceRef.current) {
+      try {
+        const canvas = await html2canvas(workspaceRef.current.querySelector('.flex-1') as HTMLElement, {
+          scale: 1,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+        });
+        screenshotBlob = await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!)));
+        console.log("截图生成成功，大小:", screenshotBlob.size); // 调试日志
+      } catch (error) {
+        console.error("生成截图失败:", error);
+      }
+    } else {
+      console.error("工作区引用未找到");
+    }
+
     const projectData = {
       project: {
         boxes: boxes.map((box) => ({
@@ -123,7 +142,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
             height: comp.height,
             props: { ...comp.props, src: comp.file ? undefined : comp.props?.src },
             fileIndex: comp.file ? index : undefined,
-            column: comp.column
+            column: comp.column,
           })),
         })),
       },
@@ -140,13 +159,19 @@ const Workspace: React.FC<WorkspaceProps> = ({
       });
     });
 
+    if (screenshotBlob) {
+      formData.append("preview", screenshotBlob, `${projectName}-preview.png`);
+      console.log("已添加 preview 到 formData"); // 调试日志
+    } else {
+      console.warn("未生成 preview 截图");
+    }
+
     formData.append("projectData", JSON.stringify(projectData));
 
     try {
       const response = await axios.post<{ layoutId: number; boxes: SavedBox[] }>("/api/project/save", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       const savedProject = response.data;
       const updatedBoxes: BoxData[] = boxes.map((originalBox) => {
         const savedBox = savedProject.boxes.find((b) => b.id === originalBox.id);
@@ -207,16 +232,14 @@ const Workspace: React.FC<WorkspaceProps> = ({
     if (!updatedBox) {
       const newBoxes = boxes.filter((b) => b.id !== boxId).map((box, index) => ({
         ...box,
-        sortOrder: index
+        sortOrder: index,
       }));
       saveHistory(newBoxes);
       return;
     }
 
-    const newBoxes = boxes.map((b) => 
-      b.id === boxId 
-        ? { ...b, ...updatedBox }
-        : b
+    const newBoxes = boxes.map((b) =>
+      b.id === boxId ? { ...b, ...updatedBox } : b
     );
     saveHistory(newBoxes);
   };

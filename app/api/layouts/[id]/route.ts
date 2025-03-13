@@ -22,15 +22,13 @@ interface BoxData {
   positionX: number;
   positionY: number;
   width: string;
-  layout?: {
-    columns: number;
-  };
+  layout?: { columns: number };
   components: ComponentData[];
 }
 
 interface ProjectData {
   name: string;
-  description?: string;
+  description?: string | null;
   boxes: BoxData[];
 }
 
@@ -41,10 +39,7 @@ interface FormattedComponent {
   height: number;
   props: Record<string, unknown>;
   column?: number;
-  file?: {
-    path: string;
-    size: number;
-  };
+  file?: { path: string; size: number };
 }
 
 interface FormattedBox {
@@ -52,9 +47,7 @@ interface FormattedBox {
   positionX: number;
   positionY: number;
   width: string;
-  layout?: {
-    columns: number;
-  };
+  layout?: { columns: number };
   components: FormattedComponent[];
 }
 
@@ -62,15 +55,16 @@ interface FormattedLayout {
   id: number;
   name: string;
   description: string | null;
+  preview?: string; // 添加 preview
   boxes: FormattedBox[];
 }
 
-async function ensureUploadDir() {
-  const uploadDir = path.join(process.cwd(), "public/uploads");
+async function ensureUploadDir(subDir: string = "") {
+  const uploadDir = path.join(process.cwd(), "public/uploads", subDir);
   try {
     await fs.mkdir(uploadDir, { recursive: true });
   } catch (error) {
-    console.error("创建上传目录失败:", error);
+    console.error(`创建上传目录失败 (${subDir}):`, error);
   }
 }
 
@@ -87,7 +81,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ message: "无效的项目 ID" }, { status: 400 });
     }
 
-    await ensureUploadDir();
+    await ensureUploadDir(); // 确保 uploads 目录存在
+    await ensureUploadDir("previews"); // 确保 previews 子目录存在
 
     const formData = await req.formData();
     const projectDataStr = formData.get("projectData");
@@ -95,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ message: "缺少或无效的 projectData" }, { status: 400 });
     }
 
-    const projectData: { name: string; description: string | null; boxes: BoxData[] } = JSON.parse(projectDataStr);
+    const projectData: ProjectData = JSON.parse(projectDataStr);
     const { name, description, boxes } = projectData;
 
     console.log("[Debug] Received project data:", projectData);
@@ -109,12 +104,23 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ message: "项目不存在或无权限" }, { status: 404 });
     }
 
-    const baseUrl = "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
+    // 处理预览图
+    let previewPath: string | undefined;
+    const previewFile = formData.get("preview");
+    if (previewFile instanceof Blob) {
+      const previewFileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-preview.png`;
+      const previewFilePath = path.join(process.cwd(), "public/uploads/previews", previewFileName);
+      const previewBuffer = Buffer.from(await previewFile.arrayBuffer());
+      await fs.writeFile(previewFilePath, previewBuffer);
+      previewPath = `/uploads/previews/${previewFileName}`;
+    }
 
     // 先删除旧的 boxes
     await prisma.box.deleteMany({ where: { layoutId } });
 
-    // 按顺序创建新 boxes
+    // 创建新 boxes
     const savedBoxes = await Promise.all(
       boxes.map(async (box: BoxData, index: number) => {
         const savedBox = await prisma.box.create({
@@ -124,7 +130,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             positionY: box.positionY,
             width: box.width,
             columns: box.layout?.columns || 1,
-            sortOrder: index, // 保存 box 的顺序
+            sortOrder: index,
           },
         });
 
@@ -159,7 +165,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
                 height: comp.height,
                 props: updatedProps as Prisma.JsonValue,
                 columnIndex: comp.column || 0,
-                sortOrder: compIndex, // 确保组件顺序
+                sortOrder: compIndex,
                 imageId,
               },
             });
@@ -180,17 +186,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
           positionX: savedBox.positionX,
           positionY: savedBox.positionY,
           width: savedBox.width,
-          layout: {
-            columns: box.layout?.columns || 1,
-          },
+          layout: { columns: box.layout?.columns || 1 },
           components: savedComponents,
         };
       })
     );
 
+    // 更新 layout，包括 preview
     const updatedLayout = await prisma.layout.update({
       where: { id: layoutId },
-      data: { name, description },
+      data: {
+        name,
+        description,
+        preview: previewPath, // 保存预览图路径
+      },
       include: {
         boxes: {
           include: {
@@ -200,10 +209,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       },
     });
 
-    const response = {
+    const response: FormattedLayout = {
       id: updatedLayout.id,
       name: updatedLayout.name,
       description: updatedLayout.description,
+      preview: updatedLayout.preview || undefined,
       boxes: savedBoxes,
     };
 
@@ -243,17 +253,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         boxes: {
           include: {
             components: {
-              include: {
-                image: true,
-              },
-              orderBy: {
-                sortOrder: 'asc'  // 组件排序
-              }
+              include: { image: true },
+              orderBy: { sortOrder: "asc" },
             },
           },
-          orderBy: {
-            sortOrder: 'asc'  // 使用 sortOrder 而不是 id
-          }
+          orderBy: { sortOrder: "asc" },
         },
       },
     });
@@ -266,14 +270,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       id: layout.id,
       name: layout.name,
       description: layout.description,
+      preview: layout.preview || undefined, // 返回 preview
       boxes: layout.boxes.map((box) => ({
         id: box.id,
         positionX: box.positionX,
         positionY: box.positionY,
         width: box.width,
-        layout: box.columns > 1 ? {
-          columns: box.columns
-        } : undefined,
+        layout: box.columns > 1 ? { columns: box.columns } : undefined,
         components: box.components.map((comp) => ({
           id: comp.id,
           type: comp.type,
@@ -281,12 +284,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           height: comp.height,
           props: comp.props as Record<string, unknown>,
           column: comp.columnIndex,
-          file: comp.image
-            ? {
-                path: comp.image.path,
-                size: comp.image.size || 0,
-              }
-            : undefined,
+          file: comp.image ? { path: comp.image.path, size: comp.image.size || 0 } : undefined,
         })),
       })),
     };

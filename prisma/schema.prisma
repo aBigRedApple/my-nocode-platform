@@ -27,6 +27,7 @@ model Layout {
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String         @db.VarChar(100)
   description String?        @db.VarChar(191)
+  preview     String?        @db.VarChar(191)
   content     Json?          // 存储项目内容（与模板内容格式相同）
   boxes       Box[]          // 项目中的盒子
   layoutLinks LayoutTemplate[] // 项目关联的模板

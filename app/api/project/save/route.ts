@@ -14,11 +14,9 @@ interface ProjectData {
       positionX: number;
       positionY: number;
       width: string;
-      height: number;
-      order: number;
-      layout?: {
-        columns: number;
-      };
+      height?: number;
+      order?: number;
+      layout?: { columns: number };
       components: {
         id?: number;
         type: string;
@@ -35,8 +33,8 @@ interface ProjectData {
   description?: string;
 }
 
-const ensureUploadDir = async () => {
-  const uploadDir = path.join(process.cwd(), "public/uploads");
+const ensureUploadDir = async (subDir: string = "") => {
+  const uploadDir = path.join(process.cwd(), "public/uploads", subDir);
   try {
     await fs.access(uploadDir, fs.constants.W_OK);
   } catch {
@@ -47,6 +45,7 @@ const ensureUploadDir = async () => {
 export async function POST(req: NextRequest) {
   try {
     await ensureUploadDir();
+    await ensureUploadDir("previews");
 
     const token = req.headers.get("Authorization")?.replace("Bearer ", "");
     if (!token) return NextResponse.json({ message: "未提供令牌" }, { status: 401 });
@@ -77,16 +76,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "无效的用户 ID" }, { status: 400 });
     }
 
-    const layout = await prisma.layout.create({
-      data: { userId: decodedUserId, name, description },
-    });
-
-    // 获取请求的 host
     const host = req.headers.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
-    // 按顺序处理 boxes，保持原始顺序
+    // 处理 preview 文件
+    let previewPath = null;
+    const previewFile = formData.get("preview");
+    console.log("Received preview file:", previewFile); // 调试日志
+    if (previewFile instanceof Blob) {
+      const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-preview.png`;
+      const filePath = path.join(process.cwd(), "public/uploads/previews", fileName);
+      const buffer = Buffer.from(await previewFile.arrayBuffer());
+      await fs.writeFile(filePath, buffer);
+      previewPath = `/uploads/previews/${fileName}`;
+      console.log("Preview saved at:", previewPath); // 调试日志
+    } else {
+      console.warn("No preview file received in formData");
+    }
+
+    // 创建 Layout 记录
+    const layout = await prisma.layout.create({
+      data: {
+        userId: decodedUserId,
+        name,
+        description,
+        preview: previewPath,
+      },
+    });
+    console.log("Layout created with preview:", layout.preview); // 调试日志
+
     const savedBoxes = [];
     for (let i = 0; i < project.boxes.length; i++) {
       const box = project.boxes[i];
@@ -97,7 +116,7 @@ export async function POST(req: NextRequest) {
           positionY: box.positionY,
           width: box.width,
           columns: box.layout?.columns || 1,
-          sortOrder: i,  // 使用 sortOrder
+          sortOrder: box.sortOrder || i,
         },
       });
 
@@ -149,15 +168,13 @@ export async function POST(req: NextRequest) {
         })
       );
 
-      savedBoxes.push({  // 使用 push 保持原始顺序
+      savedBoxes.push({
         id: savedBox.id,
         positionX: box.positionX,
         positionY: box.positionY,
         width: box.width,
-        order: i,  // 保持原始顺序
-        layout: {
-          columns: box.layout?.columns || 1
-        },
+        order: box.sortOrder || i,
+        layout: { columns: box.layout?.columns || 1 },
         height: box.height,
         components: savedComponents,
       });

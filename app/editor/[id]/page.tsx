@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -11,6 +12,7 @@ import ComponentLibrary from "@/components/ComponentLibrary";
 import PropertiesPanel from "@/components/PropertiesPanel";
 import Workspace from "@/components/Workspace";
 import axios from "@/utils/axios";
+import html2canvas from "html2canvas"; // 引入 html2canvas
 
 interface ApiLayoutData {
   id: number;
@@ -21,9 +23,7 @@ interface ApiLayoutData {
     positionX: number;
     positionY: number;
     width: string;
-    layout?: {
-      columns: number;
-    };
+    layout?: { columns: number };
     components: Array<{
       id?: number;
       type: string;
@@ -46,9 +46,7 @@ interface SavedBox {
   positionX: number;
   positionY: number;
   width: string;
-  layout?: {
-    columns: number;
-  };
+  layout?: { columns: number };
   components: Array<{
     id: number;
     type: string;
@@ -64,6 +62,7 @@ interface SavedLayout {
   name: string;
   description: string | null;
   boxes: SavedBox[];
+  preview?: string; // 添加 preview
 }
 
 const EditorPage: React.FC = () => {
@@ -78,11 +77,12 @@ const EditorPage: React.FC = () => {
   const [layoutDescription, setLayoutDescription] = useState<string | null>(null);
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [form] = Form.useForm();
+  const workspaceRef = useRef<HTMLDivElement>(null); // 用于截图的引用
 
   useEffect(() => {
     const initPage = async () => {
       if (!id) return;
-      
+
       const token = localStorage.getItem("token");
       if (!token) {
         console.error("[Error] Token missing during data load");
@@ -120,18 +120,15 @@ const EditorPage: React.FC = () => {
 
       const loadedBoxes = layoutData.boxes
         .map((box): BoxData | null => {
-          if (!box || typeof box.id === 'undefined') {
+          if (!box || typeof box.id === "undefined") {
             console.error("[Error] Box is missing ID");
             return null;
           }
 
-          const components = (box.components || []).map(comp => {
+          const components = (box.components || []).map((comp) => {
             let props = comp.props || {};
-            if (props.src && typeof props.src === 'string' && !props.src.startsWith('http')) {
-              props = {
-                ...props,
-                src: `${window.location.origin}${props.src}`
-              };
+            if (props.src && typeof props.src === "string" && !props.src.startsWith("http")) {
+              props = { ...props, src: `${window.location.origin}${props.src}` };
             }
 
             return {
@@ -141,22 +138,15 @@ const EditorPage: React.FC = () => {
               height: comp.height,
               props: props,
               column: comp.column,
-              file: comp.file
+              file: comp.file,
             };
           });
 
           return {
             id: box.id,
-            position: { 
-              x: box.positionX, 
-              y: box.positionY 
-            },
-            size: { 
-              width: box.width 
-            },
-            layout: box.layout ? {
-              columns: box.layout.columns
-            } : undefined,
+            position: { x: box.positionX, y: box.positionY },
+            size: { width: box.width },
+            layout: box.layout ? { columns: box.layout.columns } : undefined,
             confirmedComponents: components,
             pendingComponents: [],
             isConfirmed: true,
@@ -193,6 +183,17 @@ const EditorPage: React.FC = () => {
         return;
       }
 
+      // 生成截图
+      if (!workspaceRef.current) {
+        toast.error("无法生成预览图");
+        return;
+      }
+
+      const canvas = await html2canvas(workspaceRef.current, { scale: 2 }); // 高清截图
+      const previewBlob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((blob) => resolve(blob!), "image/png")
+      );
+
       const formData = new FormData();
 
       const projectData = {
@@ -203,18 +204,15 @@ const EditorPage: React.FC = () => {
           positionX: box.position.x,
           positionY: box.position.y,
           width: box.size.width,
-          layout: {
-            columns: box.layout?.columns || 1
-          },
+          layout: { columns: box.layout?.columns || 1 },
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
             id: comp.id,
             type: comp.type,
             width: comp.width,
             height: comp.height,
-            props: comp.props ? {
-              ...comp.props,
-              src: comp.file ? undefined : comp.props.src
-            } : {},
+            props: comp.props
+              ? { ...comp.props, src: comp.file ? undefined : comp.props.src }
+              : {},
             column: comp.column || 0,
             fileIndex: comp.file ? index : undefined,
           })),
@@ -223,6 +221,7 @@ const EditorPage: React.FC = () => {
 
       console.log("[Debug] Saving project data:", projectData);
 
+      // 添加文件和截图
       boxes.forEach((box) => {
         [...box.confirmedComponents, ...box.pendingComponents].forEach((comp, index) => {
           if (comp.file) {
@@ -230,7 +229,7 @@ const EditorPage: React.FC = () => {
           }
         });
       });
-
+      formData.append("preview", previewBlob, `preview-${id}.png`); // 添加截图
       formData.append("projectData", JSON.stringify(projectData));
 
       const response = await axios.put<SavedLayout>(`/api/layouts/${id}`, formData, {
@@ -334,17 +333,19 @@ const EditorPage: React.FC = () => {
       <div className="flex flex-1 overflow-x-hidden">
         <DndProvider backend={HTML5Backend}>
           <ComponentLibrary />
-          <Workspace
-            className="flex-1 bg-white p-8"
-            boxes={boxes}
-            setBoxes={setBoxes}
-            onSelectBox={setSelectedBoxId}
-            onSelectComponent={(boxId, index) => {
-              setSelectedBoxId(boxId);
-              setSelectedComponentIndex(index);
-            }}
-            isSave={false}
-          />
+          <div ref={workspaceRef} className="flex-1">
+            <Workspace
+              className="bg-white p-8"
+              boxes={boxes}
+              setBoxes={setBoxes}
+              onSelectBox={setSelectedBoxId}
+              onSelectComponent={(boxId, index) => {
+                setSelectedBoxId(boxId);
+                setSelectedComponentIndex(index);
+              }}
+              isSave={false}
+            />
+          </div>
           <PropertiesPanel
             selectedBox={boxes.find((box) => box.id === selectedBoxId) || null}
             selectedComponentIndex={selectedComponentIndex}

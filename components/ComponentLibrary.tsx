@@ -33,7 +33,6 @@ export const ComponentPreviewWithProps: React.FC<ComponentPreviewProps> = ({
   height,
 }) => {
   const resolvedWidth = typeof width === "string" ? width : `${width}px`;
-  console.log("渲染组件预览:", { type, props, width, height });
 
   switch (type) {
     case "button":

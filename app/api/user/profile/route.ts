@@ -17,6 +17,7 @@ interface UserResponse {
     description: string | null;
     createdAt: Date;
     updatedAt: Date;
+    preview?: string; // 添加 preview 到类型定义
   }>;
   templates: any[];
 }
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
             description: true,
             createdAt: true,
             updatedAt: true,
+            preview: true, // 添加 preview 字段
           },
           orderBy: {
             updatedAt: 'desc', // 按更新时间降序排序
@@ -68,7 +70,11 @@ export async function GET(req: NextRequest) {
         name: user.name,
         email: user.email,
       },
-      layouts: user.layouts,
+      layouts: user.layouts.map(layout => ({
+        ...layout,
+        createdAt: layout.createdAt.toISOString(), // 转换为 ISO 字符串
+        updatedAt: layout.updatedAt.toISOString(), // 转换为 ISO 字符串
+      })),
       templates: user.templates,
     };
 
@@ -102,7 +108,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-    const body = await req.json(); // 获取请求体中的 name 和 email
+    const body = await req.json();
     const { name, email } = body;
 
     const updatedUser = await prisma.user.update({
