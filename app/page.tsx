@@ -1,6 +1,9 @@
+'use client'
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   return (
     <div>
       {/* 渐变Hero区域 */}
@@ -135,7 +138,7 @@ export default function Home() {
                     <li>订单可视化图表</li>
                   </ul>
                 </div>
-                <button className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg transition-all">
+                <button className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg transition-all" onClick = {() => {router.push('/workspace') }}>
                   进入工作区编辑
                 </button>
               </div>
