@@ -21,112 +21,139 @@ async function seed() {
 
     const templates = [
       {
-        "id": 1,
-        "name": "现代个人简历",
-        "description": "优雅现代的个人简历设计",
-        "thumbnail": "/templates/modern-resume.jpg",
-        "category": "personal",
-        "content": {
-          "boxes": [
+        id: 1,
+        name: "现代个人简历",
+        description: "优雅现代的个人简历设计",
+        thumbnail: "/templates/modern-resume.jpg",
+        category: "personal",
+        content: {
+          boxes: [
             {
-              "id": 1,
-              "positionX": 0,
-              "positionY": 0,
-              "width": "100%",
-              "order": 0,
-              "components": [
+              id: 1,
+              positionX: 0,
+              positionY: 0,
+              width: "100%",
+              order: 0,
+              sortOrder: 0,
+              layout: {
+                columns: 3,
+              },
+              components: [
                 {
-                  "id": 1,
-                  "type": COMPONENT_TYPES.CARD,
-                  "width": "100%",
-                  "height": 140,
-                  "props": {
-                    "title": "李明",
-                    "content": "138-1234-5678 | liming@example.com | 上海",
-                    "backgroundColor": "linear-gradient(135deg, #4b5563, #d1d5db)",
-                    "style": { "color": "#fff", "padding": "20px" }
+                  id: 2,
+                  type: COMPONENT_TYPES.IMAGE,
+                  width: "100%",
+                  height: 220,
+                  props: {
+                    src: "http://localhost:3000/seed/profile-pic.jpg",
+                    style: {
+                      borderRadius: "12px",
+                      margin: "16px 0",
+                      boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+                    },
                   },
-                  "imageId": null
+                  imageId: 1,
+                  column: 1,
                 },
-                {
-                  "id": 2,
-                  "type": COMPONENT_TYPES.IMAGE,
-                  "width": "100%",
-                  "height": 220,
-                  "props": {
-                    "src": "http://localhost:3000/seed/profile-pic.jpg",
-                    "style": { "borderRadius": "12px", "margin": "16px 0", "boxShadow": "0 4px 8px rgba(0,0,0,0.1)" }
-                  },
-                  "imageId": 1
-                }
-              ]
+              ],
             },
             {
-              "id": 2,
-              "positionX": 0,
-              "positionY": 380,
-              "width": "100%",
-              "order": 1,
-              "components": [
+              id: 2,
+              positionX: 0,
+              positionY: 240,
+              width: "100%",
+              order: 1,
+              sortOrder: 1,
+              layout: {
+                columns: 1,
+              },
+              components: [
                 {
-                  "id": 3,
-                  "type": COMPONENT_TYPES.CARD,
-                  "width": "100%",
-                  "height": 120,
-                  "props": {
-                    "title": "教育背景",
-                    "content": "清华大学，计算机科学与技术，2019-2023",
-                    "backgroundColor": "#f3f4f6",
-                    "style": { "fontFamily": "Arial", "color": "#374151", "fontSize": "16px", "padding": "16px", "marginBottom": "16px", "borderRadius": "8px" }
+                  id: 1,
+                  type: COMPONENT_TYPES.CARD,
+                  width: "100%",
+                  height: 140,
+                  props: {
+                    title: "李明",
+                    content: "138-1234-5678 | liming@example.com | 上海",
+                    backgroundColor: "linear-gradient(135deg, #4b5563, #d1d5db)",
+                    style: {
+                      color: "#1f2937", 
+                      padding: "20px",
+                    },
                   },
-                  "imageId": null
-                }
-              ]
+                  imageId: null,
+                  column: 0,
+                },
+              ],
             },
             {
-              "id": 3,
-              "positionX": 0,
-              "positionY": 516,
-              "width": "100%",
-              "components": [
+              id: 3,
+              positionX: 0,
+              positionY: 380,
+              width: "100%",
+              order: 2,
+              sortOrder: 2,
+              layout: {
+                columns: 1,
+              },
+              components: [
                 {
-                  "id": 4,
-                  "type": COMPONENT_TYPES.CARD,
-                  "width": "100%",
-                  "height": 160,
-                  "props": {
-                    "title": "技能",
-                    "content": "- React\n- TypeScript\n- Node.js\n- Python\n- UI/UX",
-                    "backgroundColor": "#f9fafb",
-                    "style": { "color": "#1f2937", "fontSize": "14px", "padding": "16px", "marginBottom": "16px", "borderRadius": "8px" }
+                  id: 4,
+                  type: COMPONENT_TYPES.CARD,
+                  width: "100%",
+                  height: 160,
+                  props: {
+                    title: "技能",
+                    content: "- React\n- TypeScript\n- Node.js\n- Python\n- UI/UX",
+                    backgroundColor: "#f9fafb",
+                    style: {
+                      color: "#1f2937",
+                      fontSize: "14px",
+                      padding: "16px",
+                      marginBottom: "16px",
+                      borderRadius: "8px",
+                      whiteSpace: "pre-line",
+                    },
                   },
-                  "imageId": null
-                }
-              ]
+                  imageId: null,
+                  column: 0,
+                },
+              ],
             },
             {
-              "id": 4,
-              "positionX": 0,
-              "positionY": 692,
-              "width": "100%",
-              "components": [
+              id: 4,
+              positionX: 0,
+              positionY: 692,
+              width: "100%",
+              layout: {
+                columns: 1,
+              },
+              components: [
                 {
-                  "id": 5,
-                  "type": COMPONENT_TYPES.CARD,
-                  "width": "100%",
-                  "height": 160,
-                  "props": {
-                    "title": "工作经验",
-                    "content": "ABC科技，前端开发，2023至今\n- 开发响应式Web应用\n- 优化性能提升30%",
-                    "backgroundColor": "#f3f4f6",
-                    "style": { "fontSize": "14px", "color": "#4b5563", "padding": "16px", "borderRadius": "8px" }
+                  id: 5,
+                  type: COMPONENT_TYPES.CARD,
+                  width: "100%",
+                  height: 160,
+                  props: {
+                    title: "工作经验",
+                    content: "ABC科技，前端开发，2023至今\n- 开发响应式Web应用\n- 优化性能提升30%",
+                    backgroundColor: "#f3f4f6",
+                    style: {
+                      fontSize: "14px",
+                      color: "#4b5563",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      whiteSpace: "pre-line",
+                    },
                   },
-                  "imageId": null
-                }
-              ]
-            }
-          ]
-        }
+                  imageId: null,
+                  column: 0,
+                },
+              ],
+            },
+          ],
+        },
       },
       {
         id: 2,
