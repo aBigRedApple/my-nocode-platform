@@ -278,7 +278,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     type="number"
                     min="10"
                     value={getComponentProps(selectedComponent).style?.fontSize || 14}
-                    onChange={(e) => handlePropChange("style", { ...getComponentProps(selectedComponent).style, fontSize: parseInt(e.target.value) })}
+                    onChange={(e) => handlePropChange("style", { 
+                      ...getComponentProps(selectedComponent).style, 
+                      fontSize: parseInt(e.target.value) 
+                    })}
                     className="w-full border p-1 mt-1 rounded"
                   />
                 </label>
@@ -287,7 +290,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   <input
                     type="color"
                     value={getComponentProps(selectedComponent).style?.color || "#000000"}
-                    onChange={(e) => handlePropChange("style", { ...getComponentProps(selectedComponent).style, color: e.target.value })}
+                    onChange={(e) => handlePropChange("style", { 
+                      ...getComponentProps(selectedComponent).style, 
+                      color: e.target.value 
+                    })}
                     className="w-full mt-1"
                   />
                 </label>
@@ -295,7 +301,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   对齐方式:
                   <select
                     value={getComponentProps(selectedComponent).style?.textAlign || "left"}
-                    onChange={(e) => handlePropChange("style", { ...getComponentProps(selectedComponent).style, textAlign: e.target.value })}
+                    onChange={(e) => handlePropChange("style", { 
+                      ...getComponentProps(selectedComponent).style, 
+                      textAlign: e.target.value 
+                    })}
                     className="w-full border p-1 mt-1 rounded"
                   >
                     <option value="left">左对齐</option>
