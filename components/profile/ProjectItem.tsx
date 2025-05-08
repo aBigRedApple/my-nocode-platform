@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import { Button, Modal } from "antd";
-import { EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, EyeOutlined, ExportOutlined } from "@ant-design/icons";
+import axios from "@/utils/axios";
+import { toast } from "react-toastify";
 
 interface Project {
   id: number;
@@ -34,6 +36,36 @@ const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
 
   const handleCancel = () => {
     setIsModalOpen(false);
+  };
+
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("请先登录");
+        return;
+      }
+
+      const response = await axios.get(`/api/layouts/${project.id}/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${project.name}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("项目导出成功");
+    } catch (error) {
+      console.error("导出项目失败:", error);
+      toast.error("导出项目失败，请重试");
+    }
   };
 
   return (
@@ -76,6 +108,15 @@ const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border-none"
           >
             预览
+          </Button>
+          <Button
+            size="small"
+            icon={<ExportOutlined />}
+            onClick={handleExport}
+            className="bg-green-100 hover:bg-green-200 text-green-700 rounded-md border-none"
+            title="导出为React组件"
+          >
+            导出React
           </Button>
         </div>
       </div>
