@@ -40,40 +40,35 @@ export default function Home() {
                 title: "智能工作区",
                 desc: "可视化组件编排与实时协作",
                 icon: "💻",
-                link: "/workspace",
                 color: "bg-blue-100",
               },
               {
                 title: "模板市场",
                 desc: "海量可编辑行业模板",
                 icon: "🛍️",
-                link: "/marketplace",
                 color: "bg-purple-100",
               },
               {
                 title: "AI助手",
                 desc: "生成可编辑业务模板",
                 icon: "🤖",
-                link: "/ai",
                 color: "bg-indigo-100",
               },
               {
                 title: "个人中心",
                 desc: "项目管理与资产沉淀",
                 icon: "📁",
-                link: "/profile",
                 color: "bg-pink-100",
               },
             ].map((item, index) => (
-              <Link
+              <div
                 key={index}
-                href={item.link}
                 className={`${item.color} p-6 rounded-xl hover:shadow-lg transition-all`}
               >
                 <div className="text-4xl mb-4">{item.icon}</div>
                 <h3 className="text-xl font-bold mb-2">{item.title}</h3>
                 <p className="text-gray-600 text-sm">{item.desc}</p>
-              </Link>
+              </div>
             ))}
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Button, Drawer, Input, message, Upload, Avatar, Tooltip, Space, Spin, Typography } from "antd";
+import { Button, Drawer, Input as AntdInput, message, Upload, Avatar, Tooltip, Space, Spin, Typography, Card } from "antd";
 import {
   MessageOutlined,
   SendOutlined,
@@ -8,6 +8,7 @@ import {
   RobotOutlined,
   UserOutlined,
   LoadingOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import type { UploadFile } from "antd/es/upload/interface";
@@ -20,6 +21,19 @@ interface Message {
   files?: UploadFile[];
   timestamp?: number;
 }
+
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string;
+  category: string;
+  tags: string[];
+}
+
+const TEMPLATE_KEYWORDS = [
+  "推荐模板", "模板推荐", "电商模板", "找模板", "模板库", "模板市场"
+];
 
 const AIAssistant: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -35,7 +49,9 @@ const AIAssistant: React.FC = () => {
   const [typingMessage, setTypingMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const inputRef = useRef<Input>(null);
+  const inputRef = useRef<AntdInput>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -72,7 +88,32 @@ const AIAssistant: React.FC = () => {
         ]);
       }
     }, 30);
+
+    typingIntervalRef.current = interval;
   };
+
+  const stopTyping = () => {
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      setTypingMessage("");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: typingMessage,
+          timestamp: Date.now(),
+        },
+      ]);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleSend = async () => {
     if (!input.trim() && fileList.length === 0) return;
@@ -90,10 +131,60 @@ const AIAssistant: React.FC = () => {
     setLoading(true);
 
     try {
+      // 判断是否为模板推荐请求
+      const isTemplateQuery = TEMPLATE_KEYWORDS.some((kw) => userMessage.content.includes(kw));
+      if (isTemplateQuery) {
+        const templateResponse = await axios.post("/api/templates/match", {
+          query: userMessage.content,
+        });
+        if (templateResponse.data.success) {
+          setTemplates(templateResponse.data.templates);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `我找到了 ${templateResponse.data.templates.length} 个相关模板：`,
+              timestamp: Date.now(),
+            },
+          ]);
+        } else {
+          setTemplates([]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: templateResponse.data.message || "暂无相关模板。",
+              timestamp: Date.now(),
+            },
+          ]);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // 原有逻辑：先尝试匹配模板
+      const templateResponse = await axios.post("/api/templates/match", {
+        query: input.trim(),
+      });
+
+      if (templateResponse.data.success) {
+        setTemplates(templateResponse.data.templates);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `我找到了 ${templateResponse.data.templates.length} 个相关模板：`,
+            timestamp: Date.now(),
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      // 如果没有匹配到模板，则发送到 AI
       const formData = new FormData();
       formData.append("message", userMessage.content);
       formData.append("history", JSON.stringify(messages));
-
       fileList.forEach((file) => {
         formData.append("files", file.originFileObj as File);
       });
@@ -130,16 +221,6 @@ const AIAssistant: React.FC = () => {
     }
   };
 
-  const clearConversation = () => {
-    setMessages([
-      {
-        role: "assistant",
-        content: "你好！我是你的 AI 助手，有什么我可以帮你的吗？",
-        timestamp: Date.now(),
-      },
-    ]);
-  };
-
   return (
     <>
       <Tooltip title="AI 助手">
@@ -173,15 +254,17 @@ const AIAssistant: React.FC = () => {
         open={open}
         width={420}
         closable={true}
-        bodyStyle={{
-          padding: 0,
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-        }}
-        headerStyle={{
-          borderBottom: "1px solid #f0f0f0",
-          padding: "12px 16px",
+        styles={{
+          body: {
+            padding: 0,
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+          },
+          header: {
+            borderBottom: "1px solid #f0f0f0",
+            padding: "12px 16px",
+          }
         }}
       >
         <div
@@ -241,11 +324,75 @@ const AIAssistant: React.FC = () => {
 
                       {msg.role === "assistant" && index === 0 && (
                         <div style={{ marginTop: "12px" }}>
-                          <Space>
-                            <Button type="primary" href="/workspace">
-                              新建项目
+                          <Space style={{ width: "100%", justifyContent: "center" }}>
+                            <Button type="primary" href="/workspace" style={{ width: "120px" }}>
+                              创建新项目
                             </Button>
-                            <Button href="/marketplace">使用模板</Button>
+                            <Button href="/marketplace" style={{ width: "120px" }}>
+                              浏览模板
+                            </Button>
+                          </Space>
+                        </div>
+                      )}
+
+                      {msg.role === "assistant" && templates.length > 0 && (
+                        <div style={{ marginTop: "12px" }}>
+                          <Space direction="vertical" style={{ width: "100%" }}>
+                            {templates.map((template) => (
+                              <Card
+                                key={template.id}
+                                hoverable
+                                style={{ width: "100%" }}
+                                cover={
+                                  <img
+                                    alt={template.name}
+                                    src={template.thumbnail}
+                                    style={{ height: 160, objectFit: "cover" }}
+                                  />
+                                }
+                                onClick={() => {
+                                  window.location.href = `/workspace?template=${template.id}`;
+                                }}
+                              >
+                                <Card.Meta
+                                  title={template.name}
+                                  description={
+                                    <div>
+                                      <div>{template.description}</div>
+                                      <div style={{ marginTop: 8 }}>
+                                        <Space>
+                                          <span
+                                            style={{
+                                              backgroundColor: "#e6f7ff",
+                                              padding: "2px 8px",
+                                              borderRadius: "4px",
+                                              fontSize: "12px",
+                                              color: "#1890ff",
+                                              border: "1px solid #91d5ff",
+                                            }}
+                                          >
+                                            {template.category}
+                                          </span>
+                                          {template.tags.map((tag) => (
+                                            <span
+                                              key={tag}
+                                              style={{
+                                                backgroundColor: "#f0f0f0",
+                                                padding: "2px 8px",
+                                                borderRadius: "4px",
+                                                fontSize: "12px",
+                                              }}
+                                            >
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </Space>
+                                      </div>
+                                    </div>
+                                  }
+                                />
+                              </Card>
+                            ))}
                           </Space>
                         </div>
                       )}
@@ -319,6 +466,16 @@ const AIAssistant: React.FC = () => {
                     <div style={{ whiteSpace: "pre-wrap" }}>
                       {typingMessage}
                       <span className="typing-cursor">|</span>
+                    </div>
+                    <div style={{ marginTop: "8px", display: "flex", justifyContent: "flex-end" }}>
+                      <Button
+                        type="text"
+                        icon={<StopOutlined />}
+                        onClick={stopTyping}
+                        size="small"
+                      >
+                        结束回答
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -433,7 +590,10 @@ const AIAssistant: React.FC = () => {
             >
               <Button
                 icon={<UploadOutlined />}
-                onClick={() => document.getElementById("file-upload").click()}
+                onClick={() => {
+                  const el = document.getElementById("file-upload");
+                  if (el) el.click();
+                }}
                 style={{
                   borderRadius: "20px",
                   height: "38px",
@@ -456,11 +616,11 @@ const AIAssistant: React.FC = () => {
                 <div style={{ display: "none" }}></div>
               </Upload>
 
-              <Input
+              <AntdInput
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => handleKeyDown(e)}
                 placeholder="输入您的问题..."
                 disabled={loading}
                 style={{

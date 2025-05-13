@@ -4,7 +4,9 @@ import React, { useState } from "react";
 import { Button, Modal } from "antd";
 import { EditOutlined, DeleteOutlined, EyeOutlined, ExportOutlined } from "@ant-design/icons";
 import axios from "@/utils/axios";
-import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { toast } from 'sonner';
 
 interface Project {
   id: number;
@@ -23,6 +25,7 @@ interface Props {
 
 const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
 
   console.log("ProjectItem received project:", project); // 调试日志
 
@@ -40,14 +43,17 @@ const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
 
   const handleExport = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("请先登录");
+      const user = localStorage.getItem("token");
+      if (!user) {
+        toast.error('请先登录', {
+          description: '登录后即可导出项目',
+        });
+        router.push('/login');
         return;
       }
 
       const response = await axios.get(`/api/layouts/${project.id}/export`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user}` },
         responseType: "blob",
       });
 
@@ -61,10 +67,14 @@ const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      toast.success("项目导出成功");
+      toast.success('导出成功', {
+        description: `项目 "${project.name}" 已成功导出`,
+      });
     } catch (error) {
       console.error("导出项目失败:", error);
-      toast.error("导出项目失败，请重试");
+      toast.error('导出失败', {
+        description: '导出项目时发生错误，请稍后重试',
+      });
     }
   };
 
@@ -148,12 +158,14 @@ const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
       >
         {project.preview ? (
           <div className="flex justify-center">
-            <img
+            <Image
               src={project.preview}
               alt={`${project.name} preview`}
+              width={600}
+              height={400}
               className="max-w-full h-auto rounded-lg shadow-sm"
-              style={{ maxHeight: "400px" }}
-              onError={(e) => console.error("Image load error:", project.preview)}
+              style={{ maxHeight: "400px", objectFit: "contain" }}
+              onError={() => console.error("Image load error:", project.preview)}
             />
           </div>
         ) : (

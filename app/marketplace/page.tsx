@@ -1,11 +1,11 @@
 'use client'
 import React, { useState, useEffect, useCallback } from "react";
-import { Input, Button, Select, Card, Skeleton, Empty, Pagination, Modal } from "antd";
+import { Input, Button, Select, Card, Skeleton, Empty, Pagination, Modal, message } from "antd";
 import { useRouter } from "next/navigation";
 import { SearchOutlined, HeartOutlined, HeartFilled } from "@ant-design/icons";
 import Image from "next/image";
 import axios from "@/utils/axios";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 interface Template {
@@ -36,7 +36,7 @@ const MarketPlace = () => {
   const fetchTemplates = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.info("请登录以访问模板市场");
+      message.info("请登录以访问模板市场");
       router.push("/auth/login");
       return;
     }
@@ -58,7 +58,7 @@ const MarketPlace = () => {
       setOriginalSearchQuery(searchQuery || "");
     } catch (error) {
       console.error("获取模板失败:", error);
-      toast.error("无法加载模板，请稍后重试");
+      message.error("无法加载模板，请稍后重试");
       setTemplates([]);
       setTotalTemplates(0);
     } finally {
@@ -99,19 +99,19 @@ const MarketPlace = () => {
     try {
       const response = await axios.post("/api/layouts", { templateId });
       const { projectId } = response.data;
-      toast.success("项目创建成功，即将跳转到编辑器...");
+      message.success("项目创建成功，即将跳转到编辑器...");
       setPreviewVisible(false);
       setTimeout(() => router.push(`/editor/${projectId}`), 1000);
     } catch (error) {
       console.error("创建项目失败:", error);
-      toast.error("创建项目失败，请重试");
+      message.error("创建项目失败，请重试");
     }
   };
 
   const handleFavorite = async (templateId: number, isFavorite: boolean) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.info("请登录后收藏");
+      message.info("请登录后收藏");
       router.push("/auth/login");
       return;
     }
@@ -128,10 +128,10 @@ const MarketPlace = () => {
           template.id === templateId ? { ...template, isFavorite: !isFavorite } : template
         )
       );
-      toast.success(isFavorite ? '取消收藏成功' : '收藏成功');
+      message.success(isFavorite ? '取消收藏成功' : '收藏成功');
     } catch (error) {
       console.error("收藏操作失败:", error);
-      toast.error("操作失败，请重试");
+      message.error("操作失败，请重试");
     }
   };
 

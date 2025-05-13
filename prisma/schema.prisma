@@ -89,6 +89,7 @@ model Template {
   description String?        @db.VarChar(191)
   thumbnail   String?        @db.VarChar(191)
   category    String         @db.VarChar(50)
+  keywords    Json?          // 使用Json类型存储关键词数组
   userId      Int?           // 创建模板的用户（可选）
   user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   content     Json?          // 模板预置内容

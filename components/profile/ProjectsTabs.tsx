@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Tabs, Button, Skeleton, Empty, Modal } from "antd";
+import { Tabs, Button, Skeleton, Empty, Modal, message } from "antd";
 import { ProjectOutlined, AppstoreOutlined, DeleteOutlined } from "@ant-design/icons";
 import ProjectItem from "./ProjectItem";
 import axios from "@/utils/axios";
-import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
 interface Project {
@@ -43,9 +42,9 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
 
   // 获取收藏的模板
   const fetchFavorites = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.info("请登录后查看收藏模板");
+    const user = localStorage.getItem("token");
+    if (!user) {
+      message.info("请登录后查看收藏模板");
       router.push("/auth/login");
       return;
     }
@@ -53,12 +52,11 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
     setTemplatesLoading(true);
     try {
       const response = await axios.get("/api/favorites/templates", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user}` },
       });
       setTemplates(response.data.templates || []);
     } catch (error) {
-      console.error("获取收藏模板失败:", error);
-      toast.error("无法加载收藏模板，请稍后重试");
+      message.error("无法加载收藏模板，请稍后重试");
       setTemplates([]);
     } finally {
       setTemplatesLoading(false);
@@ -70,14 +68,21 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
   }, []);
 
   const handleDeleteProject = async (id: number) => {
+    const user = localStorage.getItem("token");
+    if (!user) {
+      message.error("请登录后操作");
+      router.push("/auth/login");
+      return;
+    }
+
     try {
       await axios.delete(`/api/layouts/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${user}` },
       });
       setProjects(projects.filter((project) => project.id !== id));
-      toast.success("项目已删除");
+      message.success("项目已删除");
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "删除项目失败，请重试");
+      message.error(error.response?.data?.message || "删除项目失败，请重试");
     }
   };
 
@@ -100,9 +105,10 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
   };
 
   const handleDeleteTemplate = async (id: number) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.info("请登录后操作");
+    const user = localStorage.getItem("token");
+    if (!user) {
+      message.info("请登录后操作");
+      router.push("/auth/login");
       return;
     }
 
@@ -110,12 +116,12 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
       await axios.post(
         "/api/favorites",
         { templateId: id, action: "remove" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${user}` } }
       );
       setTemplates(templates.filter((template) => template.id !== id));
-      toast.success("已取消收藏");
+      message.success("已取消收藏");
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "取消收藏失败，请重试");
+      message.error(error.response?.data?.message || "取消收藏失败，请重试");
     }
   };
 
@@ -138,27 +144,26 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
   };
 
   const handleEdit = async (projectId: number) => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("请先登录");
-        router.push("/auth/login");
-        return;
-      }
+    const user = localStorage.getItem("token");
+    if (!user) {
+      message.error("请先登录");
+      router.push("/auth/login");
+      return;
+    }
 
+    try {
       const response = await axios.get(`/api/layouts/${projectId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${user}` },
       });
 
       if (response.status === 200) {
         console.log("跳转到编辑页面:", `/editor/${projectId}`);
         router.replace(`/editor/${projectId}`);
       } else {
-        toast.error("无法访问该项目");
+        message.error("无法访问该项目");
       }
     } catch (error) {
-      console.error("编辑项目时出错:", error);
-      toast.error("无法编辑该项目，请重试");
+      message.error("无法编辑该项目，请重试");
     }
   };
 

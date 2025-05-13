@@ -3,7 +3,7 @@ import React from "react";
 import { Modal, Form, Input, Button } from "antd";
 import { UserOutlined, MailOutlined } from "@ant-design/icons";
 import axios from "@/utils/axios";
-import { toast } from "react-toastify";
+import { toast } from 'sonner';
 
 interface UserInfo {
   name: string;
@@ -29,10 +29,15 @@ const EditUserModal: React.FC<Props> = ({ visible, userInfo, setUserInfo, onClos
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setUserInfo(values);
       onClose();
-      toast.success("个人信息已更新");
+      toast.success('个人信息已更新', {
+        description: '您的个人信息已成功更新',
+      });
       refreshUserState();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "更新个人信息失败");
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error('更新失败', {
+        description: axiosError?.response?.data?.message || "更新个人信息失败，请重试",
+      });
     }
   };
 

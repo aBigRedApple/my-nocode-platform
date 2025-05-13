@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     // 返回 token 解码后的用户信息
     return NextResponse.json({ message: 'Token is valid', user: decoded }, { status: 200 });
   } catch (error) {
-    // 如果 token 无效或过期，返回错误
+    console.error('Token verification error:', error);
     return NextResponse.json({ message: 'Token is not valid' }, { status: 401 });
   }
 }

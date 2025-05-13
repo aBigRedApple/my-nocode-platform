@@ -6,6 +6,7 @@ import { FaUndo, FaRedo, FaSave } from "react-icons/fa";
 import axios from "../utils/axios";
 import { Dialog, Transition } from "@headlessui/react";
 import html2canvas from "html2canvas";
+import { toast } from 'sonner';
 
 interface WorkspaceProps {
   className?: string;
@@ -14,12 +15,6 @@ interface WorkspaceProps {
   onSelectBox?: (boxId: number | null) => void;
   onSelectComponent?: (boxId: number, componentIndex: number | null) => void;
   isSave?: boolean;
-  onUpdateBox?: (boxId: number, updatedBox: Partial<BoxData> | null) => void;
-  onUpdateComponent?: (
-    boxId: number,
-    componentIndex: number,
-    updatedComponent: Partial<ComponentInfo> & { file?: File }
-  ) => void;
 }
 
 interface SavedBox {
@@ -37,8 +32,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
   onSelectBox,
   onSelectComponent,
   isSave = true,
-  onUpdateBox: externalUpdateBox,
-  onUpdateComponent: externalUpdateComponent,
 }) => {
   const router = useRouter();
   const [nextId, setNextId] = useState(1);
@@ -51,7 +44,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const saveHistory = (newBoxes: BoxData[]) => {
-    const sortedBoxes = [...newBoxes].sort((a, b) => a.sortOrder - b.sortOrder);
+    const sortedBoxes = [...newBoxes].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     const newHistory = history.slice(0, currentIndex + 1);
     newHistory.push(sortedBoxes);
     if (newHistory.length > 10) newHistory.shift();
@@ -89,7 +82,10 @@ const Workspace: React.FC<WorkspaceProps> = ({
 
     const userString = localStorage.getItem("user");
     if (!userString) {
-      alert("请先登录！");
+      toast.warning('请先登录', {
+        description: '登录后即可保存项目',
+      });
+      router.push('/login');
       setSaving(false);
       setIsModalOpen(false);
       return;
@@ -99,9 +95,11 @@ const Workspace: React.FC<WorkspaceProps> = ({
     try {
       const user = JSON.parse(userString) as { id: number };
       userId = user.id;
-    } catch (error) {
-      console.error("解析 user 数据失败:", error);
-      alert("用户信息无效，请重新登录！");
+    } catch {
+      toast.error('登录状态无效', {
+        description: '请重新登录以继续操作',
+      });
+      router.push('/login');
       setSaving(false);
       setIsModalOpen(false);
       return;
@@ -134,12 +132,10 @@ const Workspace: React.FC<WorkspaceProps> = ({
           width: box.size.width,
           sortOrder: box.sortOrder || 0,
           layout: box.layout,
-          height: box.height,
           components: [...box.confirmedComponents, ...box.pendingComponents].map((comp, index) => ({
             id: comp.id,
             type: comp.type,
             width: comp.width,
-            height: comp.height,
             props: { ...comp.props, src: comp.file ? undefined : comp.props?.src },
             fileIndex: comp.file ? index : undefined,
             column: comp.column,
@@ -204,17 +200,19 @@ const Workspace: React.FC<WorkspaceProps> = ({
       setIsModalOpen(false);
       setProjectName("");
       setProjectDesc("");
-      alert(`项目 "${projectName}" 保存成功！工作区已清空。`);
-      router.push("/profile");
-    } catch (error) {
-      console.error("Save error:", error);
-      alert("保存失败，请重试！");
+      toast.success('保存成功', {
+        description: '项目已保存，可在个人中心查看',
+      });
+    } catch {
+      toast.error('保存失败', {
+        description: '保存项目时发生错误，请重试',
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleWorkspaceClick = (e: React.MouseEvent) => {
+  const handleWorkspaceClick = () => {
     const newBox: BoxData = {
       id: nextId,
       position: { x: 0, y: 0 },
@@ -237,25 +235,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
       return;
     }
     const newBoxes = boxes.map((box) => (box.id === boxId ? { ...box, ...updatedBox } : box));
-    saveHistory(newBoxes);
-    setBoxes(newBoxes);
-  };
-
-  const handleUpdateComponent = (
-    boxId: number,
-    componentIndex: number,
-    updatedComponent: Partial<ComponentInfo> & { file?: File }
-  ) => {
-    const newBoxes = boxes.map((box) => {
-      if (box.id !== boxId) return box;
-      const allComponents = [...box.confirmedComponents, ...box.pendingComponents];
-      allComponents[componentIndex] = { ...allComponents[componentIndex], ...updatedComponent };
-      return {
-        ...box,
-        confirmedComponents: allComponents.slice(0, box.confirmedComponents.length),
-        pendingComponents: allComponents.slice(box.confirmedComponents.length),
-      };
-    });
     saveHistory(newBoxes);
     setBoxes(newBoxes);
   };

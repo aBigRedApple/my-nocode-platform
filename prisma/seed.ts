@@ -26,6 +26,7 @@ async function seed() {
         description: "优雅现代的个人简历设计",
         thumbnail: "/templates/modern-resume.jpg",
         category: "personal",
+        keywords: JSON.stringify(["简历", "求职", "个人介绍", "工作经历", "技能展示", "自我介绍"]),
         content: {
           boxes: [
             {
@@ -161,6 +162,7 @@ async function seed() {
         description: "现代化的产品介绍页面",
         thumbnail: "/templates/product-showcase.jpg",
         category: "business",
+        keywords: JSON.stringify(["产品展示", "商品展示", "产品介绍", "商品详情", "产品展示页"]),
         content: {
           boxes: [
             {
@@ -241,6 +243,7 @@ async function seed() {
         description: "优雅的商业展示模板",
         thumbnail: "/templates/business-plan.jpg",
         category: "business",
+        keywords: JSON.stringify(["商业计划", "创业计划", "项目计划", "商业展示", "企业规划"]),
         content: {
           boxes: [
             {
@@ -332,6 +335,7 @@ async function seed() {
         description: "简洁的教学演示页面",
         thumbnail: "/templates/education.jpg",
         category: "education",
+        keywords: JSON.stringify(["教育", "教学", "课程", "学习", "培训", "课件"]),
         content: {
           boxes: [
             {
@@ -409,6 +413,7 @@ async function seed() {
         description: "简约的公司介绍页面",
         thumbnail: "/templates/company-profile.jpg",
         category: "business",
+        keywords: JSON.stringify(["公司介绍", "企业简介", "关于我们", "企业展示", "公司展示"]),
         content: {
           boxes: [
             {
@@ -493,6 +498,7 @@ async function seed() {
         description: "清新的博客设计",
         thumbnail: "/templates/blog.jpg",
         category: "personal",
+        keywords: JSON.stringify(["博客", "文章", "个人博客", "内容展示", "文章列表"]),
         content: {
           boxes: [
             {
@@ -570,6 +576,7 @@ async function seed() {
         description: "实用的笔记布局",
         thumbnail: "/templates/notes.jpg",
         category: "education",
+        keywords: JSON.stringify(["笔记", "课堂笔记", "学习笔记", "笔记模板", "课程笔记"]),
         content: {
           boxes: [
             {
@@ -649,6 +656,7 @@ async function seed() {
         description: "高效的营销布局",
         thumbnail: "/templates/marketing.jpg",
         category: "business",
+        keywords: JSON.stringify(["营销", "推广", "营销计划", "市场推广", "营销方案"]),
         content: {
           boxes: [
             {
@@ -733,6 +741,7 @@ async function seed() {
         description: "温馨的日记设计",
         thumbnail: "/templates/diary.jpg",
         category: "personal",
+        keywords: JSON.stringify(["日记", "个人日记", "生活记录", "心情记录", "日记本"]),
         content: {
           boxes: [
             {
@@ -812,6 +821,7 @@ async function seed() {
         description: "清晰的课程规划",
         thumbnail: "/templates/schedule.jpg",
         category: "education",
+        keywords: JSON.stringify(["课程表", "课表", "课程安排", "学习计划", "课程规划"]),
         content: {
           boxes: [
             {
@@ -891,6 +901,17 @@ async function seed() {
               ],
             },
           ],
+        },
+      },
+      {
+        id: 11,
+        name: "电商商城模板",
+        description: "专业的电商网站布局",
+        thumbnail: "/templates/ecommerce.jpg",
+        category: "business",
+        keywords: JSON.stringify(["电商", "商城", "购物", "商品", "产品", "店铺", "销售", "在线商城", "电商网站"]),
+        content: {
+          // ... existing code ...
         },
       },
     ];
