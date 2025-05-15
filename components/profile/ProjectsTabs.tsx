@@ -56,6 +56,7 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
       });
       setTemplates(response.data.templates || []);
     } catch (error) {
+      console.error("获取收藏模板失败:", error);
       message.error("无法加载收藏模板，请稍后重试");
       setTemplates([]);
     } finally {
@@ -81,8 +82,9 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
       });
       setProjects(projects.filter((project) => project.id !== id));
       message.success("项目已删除");
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "删除项目失败，请重试");
+    } catch (error) {
+      console.error("删除项目失败:", error);
+      message.error("删除项目失败，请重试");
     }
   };
 
@@ -120,8 +122,9 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
       );
       setTemplates(templates.filter((template) => template.id !== id));
       message.success("已取消收藏");
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "取消收藏失败，请重试");
+    } catch (error) {
+      console.error(error);
+      message.error("取消收藏失败，请重试");
     }
   };
 
@@ -163,6 +166,7 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
         message.error("无法访问该项目");
       }
     } catch (error) {
+      console.error("无法编辑该项目:", error);
       message.error("无法编辑该项目，请重试");
     }
   };

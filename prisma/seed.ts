@@ -903,17 +903,6 @@ async function seed() {
           ],
         },
       },
-      {
-        id: 11,
-        name: "电商商城模板",
-        description: "专业的电商网站布局",
-        thumbnail: "/templates/ecommerce.jpg",
-        category: "business",
-        keywords: JSON.stringify(["电商", "商城", "购物", "商品", "产品", "店铺", "销售", "在线商城", "电商网站"]),
-        content: {
-          // ... existing code ...
-        },
-      },
     ];
 
     await prisma.template.createMany({ data: templates });
