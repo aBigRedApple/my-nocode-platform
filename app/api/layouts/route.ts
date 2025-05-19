@@ -57,7 +57,6 @@ export async function POST(req: NextRequest) {
         },
       },
     });
-    console.log("新项目创建成功，ID:", project.id);
 
     // 只返回 projectId，与前端期望一致
     return NextResponse.json({ projectId: project.id }, { status: 201 });

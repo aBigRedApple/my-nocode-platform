@@ -27,8 +27,6 @@ const ProjectItem: React.FC<Props> = ({ project, onEdit, onDelete }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
 
-  console.log("ProjectItem received project:", project); // 调试日志
-
   const showModal = () => {
     setIsModalOpen(true);
   };

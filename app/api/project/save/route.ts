@@ -83,14 +83,12 @@ export async function POST(req: NextRequest) {
     // 处理 preview 文件
     let previewPath = null;
     const previewFile = formData.get("preview");
-    console.log("Received preview file:", previewFile); // 调试日志
     if (previewFile instanceof Blob) {
       const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-preview.png`;
       const filePath = path.join(process.cwd(), "public/uploads/previews", fileName);
       const buffer = Buffer.from(await previewFile.arrayBuffer());
       await fs.writeFile(filePath, buffer);
       previewPath = `/uploads/previews/${fileName}`;
-      console.log("Preview saved at:", previewPath); // 调试日志
     } else {
       console.warn("No preview file received in formData");
     }
@@ -104,7 +102,6 @@ export async function POST(req: NextRequest) {
         preview: previewPath,
       },
     });
-    console.log("Layout created with preview:", layout.preview); // 调试日志
 
     const savedBoxes = [];
     for (let i = 0; i < project.boxes.length; i++) {

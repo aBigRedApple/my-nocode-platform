@@ -93,8 +93,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const projectData: ProjectData = JSON.parse(projectDataStr);
     const { name, description, boxes } = projectData;
 
-    console.log("[Debug] Received project data:", projectData);
-
     const layout = await prisma.layout.findUnique({
       where: { id: layoutId },
       select: { userId: true },
@@ -116,6 +114,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       await fs.writeFile(previewFilePath, previewBuffer);
       previewPath = `/uploads/previews/${previewFileName}`;
     }
+
+    // 先获取现有的组件信息，以保留图片 URL
+    const existingLayout = await prisma.layout.findUnique({
+      where: { id: layoutId },
+      include: {
+        boxes: {
+          include: {
+            components: {
+              include: { image: true }
+            }
+          }
+        }
+      }
+    });
+
+    // 创建图片 URL 映射
+    const imageUrlMap = new Map<number, string>();
+    existingLayout?.boxes.forEach(box => {
+      box.components.forEach(comp => {
+        if (comp.image?.path) {
+          imageUrlMap.set(comp.id, comp.image.path);
+        }
+      });
+    });
 
     // 先删除旧的 boxes
     await prisma.box.deleteMany({ where: { layoutId } });
@@ -139,6 +161,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             let imageId: number | undefined;
             let imageUrl: string | undefined;
 
+            // 检查是否有新上传的图片
             if (comp.fileIndex !== undefined) {
               const fileKey = `image-${box.id || index}-${comp.fileIndex}`;
               const file = formData.get(fileKey);
@@ -155,7 +178,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
               }
             }
 
-            const updatedProps = imageUrl ? { ...comp.props, src: imageUrl } : comp.props;
+            // 如果没有新上传的图片，使用现有的图片 URL
+            if (!imageUrl && comp.id) {
+              imageUrl = imageUrlMap.get(comp.id);
+            }
+
+            // 更新 props，保留现有的图片 URL
+            const updatedProps = {
+              ...comp.props,
+              ...(imageUrl && { src: imageUrl }),
+            };
 
             const component = await prisma.component.create({
               data: {
@@ -216,8 +248,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       preview: updatedLayout.preview || undefined,
       boxes: savedBoxes,
     };
-
-    console.log("[Debug] Sending response:", response);
 
     return NextResponse.json(response, { status: 200 });
   } catch (error: unknown) {

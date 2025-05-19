@@ -17,7 +17,6 @@ const COMPONENT_TYPES = {
 async function seed() {
   try {
     await prisma.template.deleteMany();
-    console.log("已清空模板表");
 
     const templates = [
       {
@@ -906,7 +905,6 @@ async function seed() {
     ];
 
     await prisma.template.createMany({ data: templates });
-    console.log("模板数据已成功插入数据库");
   } catch (error) {
     console.error("插入数据失败:", error);
   } finally {

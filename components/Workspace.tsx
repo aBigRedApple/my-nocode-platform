@@ -115,7 +115,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
           backgroundColor: '#ffffff',
         });
         screenshotBlob = await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob!)));
-        console.log("截图生成成功，大小:", screenshotBlob.size); // 调试日志
       } catch (error) {
         console.error("生成截图失败:", error);
       }
@@ -136,6 +135,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
             id: comp.id,
             type: comp.type,
             width: comp.width,
+            height: comp.height,
             props: { ...comp.props, src: comp.file ? undefined : comp.props?.src },
             fileIndex: comp.file ? index : undefined,
             column: comp.column,
@@ -157,7 +157,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
 
     if (screenshotBlob) {
       formData.append("preview", screenshotBlob, `${projectName}-preview.png`);
-      console.log("已添加 preview 到 formData"); // 调试日志
     } else {
       console.warn("未生成 preview 截图");
     }

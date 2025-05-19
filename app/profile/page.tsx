@@ -58,8 +58,6 @@ const Profile: React.FC = () => {
       const response = await axios.get("/api/user/profile"); // 修正为 /api/profile
       const { user, layouts, templates } = response.data;
 
-      console.log("Fetched profile data:", response.data); // 调试日志
-
       setUserInfo({ name: user.name, email: user.email });
       setProjects(
         layouts.map((layout: any) => ({

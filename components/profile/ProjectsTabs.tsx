@@ -160,7 +160,6 @@ const ProjectsTabs: React.FC<Props> = ({ loading, projects, setProjects, templat
       });
 
       if (response.status === 200) {
-        console.log("跳转到编辑页面:", `/editor/${projectId}`);
         router.replace(`/editor/${projectId}`);
       } else {
         message.error("无法访问该项目");

@@ -108,10 +108,8 @@ const EditorPage: React.FC = () => {
 
   const loadProjectData = async (id: string) => {
     try {
-      console.log("[Debug] Loading project data for ID:", id);
       const response = await axios.get<ApiLayoutData>(`/api/layouts/${id}`);
       const layoutData = response.data;
-      console.log("[Debug] API Response:", layoutData);
 
       if (!layoutData || !Array.isArray(layoutData.boxes)) {
         console.error("[Error] Invalid layout data format");
@@ -153,8 +151,6 @@ const EditorPage: React.FC = () => {
           };
         })
         .filter((box): box is BoxData => box !== null);
-
-      console.log("[Debug] Processed boxes:", loadedBoxes);
 
       if (loadedBoxes.length === 0) {
         console.warn("[Warning] No valid boxes found in layout data");
@@ -218,8 +214,6 @@ const EditorPage: React.FC = () => {
           })),
         })),
       };
-
-      console.log("[Debug] Saving project data:", projectData);
 
       // 添加文件和截图
       boxes.forEach((box) => {
